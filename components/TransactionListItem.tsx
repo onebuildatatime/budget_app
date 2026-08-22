@@ -138,6 +138,29 @@ export const TransactionListItem = memo(function TransactionListItem({
             <Text style={[styles.tagText, { color: toneText }]}>{toneLabel}</Text>
           </View>
         </View>
+
+        <View style={styles.cardActions}>
+          {onQuickLog ? (
+            <Pressable
+              style={[styles.cardActionButton, { backgroundColor: palette.successSurface }]}
+              onPress={onQuickLog}
+            >
+              <Text style={[styles.cardActionIcon, { color: palette.successText }]}>↻</Text>
+            </Pressable>
+          ) : null}
+          <Pressable
+            style={[styles.cardActionButton, { backgroundColor: palette.accentSoft }]}
+            onPress={onEdit}
+          >
+            <Text style={[styles.cardActionIcon, { color: palette.accentText }]}>✎</Text>
+          </Pressable>
+          <Pressable
+            style={[styles.cardActionButton, { backgroundColor: palette.alertSurface }]}
+            onPress={onDelete}
+          >
+            <Text style={[styles.cardActionIcon, { color: palette.alertText }]}>✕</Text>
+          </Pressable>
+        </View>
       </View>
 
       <View style={[styles.swipeRail, { width: swipeRailWidth }]}>
@@ -210,15 +233,15 @@ const styles = StyleSheet.create({
     minWidth: 0,
   },
   iconWrap: {
-    width: 24,
-    height: 24,
-    borderRadius: 6,
+    width: 28,
+    height: 28,
+    borderRadius: 8,
     alignItems: 'center',
     justifyContent: 'center',
     flexShrink: 0,
   },
   iconText: {
-    fontSize: 10,
+    fontSize: 13,
     fontWeight: '600',
   },
   copy: {
@@ -226,19 +249,19 @@ const styles = StyleSheet.create({
     minWidth: 0,
   },
   title: {
-    fontSize: 11,
+    fontSize: 13,
     fontWeight: '700',
     marginBottom: 0,
-    lineHeight: 13,
+    lineHeight: 15,
   },
   meta: {
-    fontSize: 8,
-    lineHeight: 10,
+    fontSize: 10,
+    lineHeight: 12,
   },
   amount: {
-    fontWeight: '600',
-    fontSize: 12,
-    lineHeight: 14,
+    fontWeight: '700',
+    fontSize: 14,
+    lineHeight: 16,
     textAlign: 'right',
   },
   tagRow: {
@@ -253,9 +276,27 @@ const styles = StyleSheet.create({
     paddingVertical: 2,
   },
   tagText: {
-    fontSize: 7,
+    fontSize: 8,
     fontWeight: '500',
     lineHeight: 10,
+  },
+  cardActions: {
+    flexDirection: 'row',
+    gap: 4,
+    justifyContent: 'flex-end',
+  },
+  cardActionButton: {
+    width: 28,
+    height: 28,
+    borderRadius: 6,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: 'transparent',
+  },
+  cardActionIcon: {
+    fontSize: 12,
+    fontWeight: '600',
   },
   swipeRail: {
     gap: 3,
