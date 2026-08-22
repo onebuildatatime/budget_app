@@ -1304,7 +1304,7 @@ export const getCategoryGlyph = (name: string) => {
 };
 
 export const getBudgetTone = (ratio: number): BudgetTone => {
-  if (ratio >= 1) {
+  if (ratio > 1) {
     return 'alert';
   }
 
