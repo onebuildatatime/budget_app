@@ -140,70 +140,24 @@ export const TransactionListItem = memo(function TransactionListItem({
         </View>
 
         <View style={styles.cardActions}>
-          {onQuickLog ? (
-            <Pressable
-              style={[styles.cardActionButton, { backgroundColor: palette.successSurface }]}
-              onPress={onQuickLog}
-            >
-              <Text style={[styles.cardActionIcon, { color: palette.successText }]}>↻</Text>
-            </Pressable>
+          {recurring ? (
+            <Text style={[styles.cardActionTag, { color: palette.textMuted }]}>Recurring</Text>
           ) : null}
           <Pressable
             style={[styles.cardActionButton, { backgroundColor: palette.accentSoft }]}
             onPress={onEdit}
           >
-            <Text style={[styles.cardActionIcon, { color: palette.accentText }]}>✎</Text>
+            <Text style={[styles.cardActionText, { color: palette.accentText }]}>Edit</Text>
           </Pressable>
           <Pressable
             style={[styles.cardActionButton, { backgroundColor: palette.alertSurface }]}
             onPress={onDelete}
           >
-            <Text style={[styles.cardActionIcon, { color: palette.alertText }]}>✕</Text>
+            <Text style={[styles.cardActionText, { color: palette.alertText }]}>Delete</Text>
           </Pressable>
         </View>
       </View>
 
-      <View style={[styles.swipeRail, { width: swipeRailWidth }]}>
-        {onQuickLog ? (
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel={`Log ${title} again`}
-            accessibilityHint="Opens a new expense prefilled from this transaction"
-            style={[
-              styles.swipeRailButton,
-              {
-                backgroundColor: palette.successSurface,
-                borderColor: palette.successText,
-              },
-            ]}
-            onPress={onQuickLog}
-          >
-            <Text style={[styles.swipeRailButtonIcon, { color: palette.successText }]}>↻</Text>
-          </Pressable>
-        ) : null}
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel={`Edit ${title}`}
-          style={[
-            styles.swipeRailButton,
-            {
-              backgroundColor: palette.accentSoft,
-              borderColor: palette.accentBorder,
-            },
-          ]}
-          onPress={onEdit}
-        >
-          <Text style={[styles.swipeRailButtonIcon, { color: palette.accentText }]}>✎</Text>
-        </Pressable>
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel={`Delete ${title}`}
-          style={[styles.swipeRailButton, { backgroundColor: palette.alertSurface, borderColor: palette.alertSurface }]}
-          onPress={onDelete}
-        >
-          <Text style={[styles.swipeRailButtonIcon, { color: palette.alertText }]}>✕</Text>
-        </Pressable>
-      </View>
     </ScrollView>
   );
 });
@@ -255,8 +209,8 @@ const styles = StyleSheet.create({
     lineHeight: 15,
   },
   meta: {
-    fontSize: 10,
-    lineHeight: 12,
+    fontSize: 9,
+    lineHeight: 11,
   },
   amount: {
     fontWeight: '700',
@@ -276,26 +230,29 @@ const styles = StyleSheet.create({
     paddingVertical: 2,
   },
   tagText: {
-    fontSize: 8,
+    fontSize: 7,
     fontWeight: '500',
-    lineHeight: 10,
+    lineHeight: 9,
   },
   cardActions: {
     flexDirection: 'row',
     gap: 4,
+    alignItems: 'center',
     justifyContent: 'flex-end',
   },
+  cardActionTag: {
+    fontSize: 7,
+    fontWeight: '500',
+  },
   cardActionButton: {
-    width: 28,
-    height: 28,
-    borderRadius: 6,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 4,
     alignItems: 'center',
     justifyContent: 'center',
-    borderWidth: 1,
-    borderColor: 'transparent',
   },
-  cardActionIcon: {
-    fontSize: 12,
+  cardActionText: {
+    fontSize: 8,
     fontWeight: '600',
   },
   swipeRail: {
