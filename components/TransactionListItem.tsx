@@ -190,10 +190,11 @@ const styles = StyleSheet.create({
     width: '100%',
   },
   card: {
-    borderRadius: 20,
+    borderRadius: 16,
     borderWidth: 1,
-    padding: 10,
-    gap: 8,
+    padding: 8,
+    gap: 6,
+    marginBottom: 8,
   },
   header: {
     flexDirection: 'row',
@@ -224,18 +225,18 @@ const styles = StyleSheet.create({
     minWidth: 0,
   },
   title: {
-    fontSize: 15,
-    fontWeight: '800',
-    marginBottom: 2,
+    fontSize: 13,
+    fontWeight: '700',
+    marginBottom: 1,
   },
   meta: {
-    fontSize: 11,
-    lineHeight: 16,
+    fontSize: 10,
+    lineHeight: 14,
   },
   amount: {
-    fontWeight: '800',
-    fontSize: 16,
-    lineHeight: 20,
+    fontWeight: '700',
+    fontSize: 14,
+    lineHeight: 18,
     textAlign: 'right',
   },
   tagRow: {
@@ -249,8 +250,8 @@ const styles = StyleSheet.create({
     paddingVertical: 3,
   },
   tagText: {
-    fontSize: 10,
-    fontWeight: '700',
+    fontSize: 9,
+    fontWeight: '600',
   },
   swipeRail: {
     gap: 6,
