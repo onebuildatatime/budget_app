@@ -7137,6 +7137,29 @@ export default function App() {
                 {formatCurrency(totalPlanned)}
               </Text>
             </View>
+
+            {filteredTransactions.length > 0 && (
+              <View style={styles.transactionHeroStatsGrid}>
+                <View style={styles.transactionHeroStatItem}>
+                  <Text style={styles.transactionHeroStatLabel}>Income</Text>
+                  <Text style={[styles.transactionHeroStatValue, { color: '#4ade80' }]}>
+                    {formatCurrency(filteredIncomeTotal)}
+                  </Text>
+                </View>
+                <View style={styles.transactionHeroStatItem}>
+                  <Text style={styles.transactionHeroStatLabel}>Entries</Text>
+                  <Text style={styles.transactionHeroStatValue}>{filteredTransactions.length}</Text>
+                </View>
+                <View style={styles.transactionHeroStatItem}>
+                  <Text style={styles.transactionHeroStatLabel}>Largest</Text>
+                  <Text style={styles.transactionHeroStatValue}>{formatCurrency(transactionStats.largestExpense)}</Text>
+                </View>
+                <View style={styles.transactionHeroStatItem}>
+                  <Text style={styles.transactionHeroStatLabel}>Daily Avg</Text>
+                  <Text style={styles.transactionHeroStatValue}>{formatCurrency(transactionStats.averagePerDay)}</Text>
+                </View>
+              </View>
+            )}
           </View>
 
           <Pressable
@@ -13755,6 +13778,33 @@ const createStyles = (
       fontSize: 14,
       fontWeight: '700',
       textAlign: 'center',
+    },
+    transactionHeroStatsGrid: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      gap: spacing.md,
+      marginTop: spacing.lg,
+      paddingTop: spacing.lg,
+      borderTopWidth: 1,
+      borderTopColor: '#164b40',
+    },
+    transactionHeroStatItem: {
+      flex: 1,
+      minWidth: '45%',
+    },
+    transactionHeroStatLabel: {
+      fontSize: 11,
+      fontWeight: '600',
+      color: '#b8d4cc',
+      textTransform: 'uppercase',
+      letterSpacing: 0.5,
+      marginBottom: spacing.xs,
+    },
+    transactionHeroStatValue: {
+      fontSize: 16,
+      fontWeight: '800',
+      fontFamily: 'Courier New, monospace',
+      color: '#ffffff',
     },
     transactionStatsGrid: {
       flexDirection: 'row',
