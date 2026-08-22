@@ -193,8 +193,8 @@ const styles = StyleSheet.create({
     borderRadius: 14,
     borderWidth: 1,
     padding: 6,
-    gap: 4,
-    marginBottom: 6,
+    gap: 2,
+    marginBottom: 4,
   },
   header: {
     flexDirection: 'row',
@@ -243,16 +243,18 @@ const styles = StyleSheet.create({
   tagRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 3,
+    gap: 2,
+    marginTop: 0,
   },
   tag: {
-    borderRadius: 6,
-    paddingHorizontal: 5,
+    borderRadius: 4,
+    paddingHorizontal: 4,
     paddingVertical: 2,
   },
   tagText: {
-    fontSize: 8,
-    fontWeight: '600',
+    fontSize: 7,
+    fontWeight: '500',
+    lineHeight: 10,
   },
   swipeRail: {
     gap: 6,
