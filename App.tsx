@@ -7232,6 +7232,112 @@ export default function App() {
         )}
       </View>
 
+      {/* Budget Alerts */}
+      {budgetAlerts.length > 0 && showBudgetAlerts && (
+        <View style={styles.alertsBanner}>
+          {budgetAlerts.slice(0, 2).map((alert, idx) => (
+            <Text key={idx} style={styles.alertText}>⚠️ {alert}</Text>
+          ))}
+          {budgetAlerts.length > 2 && (
+            <Text style={styles.alertText}>+ {budgetAlerts.length - 2} more alerts</Text>
+          )}
+        </View>
+      )}
+
+      {/* Weekly Pace */}
+      {showWeeklyPace && dailyPace !== 0 && (
+        <View style={styles.paceCard}>
+          <Text style={styles.paceLabel}>Weekly Pace</Text>
+          <Text style={styles.paceValue}>
+            {dailyPace > 0 ? formatCurrency(dailyPace) : 'On budget'}
+          </Text>
+          <Text style={styles.paceText}>
+            {daysLeftInMonth} days left · {dailyPace > 0 ? `Spend ${formatCurrency(dailyPace)}/day` : 'Spending under limit'}
+          </Text>
+        </View>
+      )}
+
+      {/* Quick Category Buttons */}
+      {categorySummaries.length > 0 && (
+        <View style={styles.quickCategoriesSection}>
+          <Text style={styles.settingsGroupLabel}>Quick Add</Text>
+          <View style={styles.quickCategoriesGrid}>
+            {categorySummaries.slice(0, 4).map((summary) => (
+              <Pressable
+                key={summary.category.id}
+                style={styles.quickCategoryButton}
+                onPress={() => {
+                  setExpenseCategoryId(summary.category.id);
+                  openExpenseCapture(summary.category.id);
+                }}
+              >
+                <Text style={styles.quickCategoryIcon}>{getCategoryIcon(summary.category.name)}</Text>
+                <Text style={styles.quickCategoryName}>{summary.category.name}</Text>
+              </Pressable>
+            ))}
+          </View>
+        </View>
+      )}
+
+      {/* Recurring Transactions */}
+      {getRecurringTransactions.length > 0 && (
+        <View style={styles.collapsibleSection}>
+          <Pressable
+            style={styles.collapsibleHeader}
+            onPress={() => setShowRecurringList(!showRecurringList)}
+          >
+            <Text style={styles.settingsGroupLabel}>
+              Recurring ({getRecurringTransactions.length})
+            </Text>
+            <Text style={styles.collapsibleToggle}>{showRecurringList ? '▼' : '▶'}</Text>
+          </Pressable>
+          {showRecurringList && (
+            <View style={styles.collapsibleContent}>
+              {getRecurringTransactions.slice(0, 5).map((t) => (
+                <Text key={t.id} style={styles.recurringItem}>
+                  • {t.note || 'Income'} - {formatCurrency(t.amount)}
+                </Text>
+              ))}
+            </View>
+          )}
+        </View>
+      )}
+
+      {/* Monthly Summary */}
+      {getMonthlySummary && (
+        <View style={styles.collapsibleSection}>
+          <Pressable
+            style={styles.collapsibleHeader}
+            onPress={() => setShowMonthlySummary(!showMonthlySummary)}
+          >
+            <Text style={styles.settingsGroupLabel}>Month Summary</Text>
+            <Text style={styles.collapsibleToggle}>{showMonthlySummary ? '▼' : '▶'}</Text>
+          </Pressable>
+          {showMonthlySummary && (
+            <View style={styles.summaryGrid}>
+              <View style={styles.summaryItem}>
+                <Text style={styles.summaryLabel}>Spent</Text>
+                <Text style={styles.summaryValue}>{formatCurrency(getMonthlySummary.spent)}</Text>
+              </View>
+              <View style={styles.summaryItem}>
+                <Text style={styles.summaryLabel}>Income</Text>
+                <Text style={[styles.summaryValue, { color: '#4ade80' }]}>{formatCurrency(getMonthlySummary.income)}</Text>
+              </View>
+              <View style={styles.summaryItem}>
+                <Text style={styles.summaryLabel}>Planned</Text>
+                <Text style={styles.summaryValue}>{formatCurrency(getMonthlySummary.planned)}</Text>
+              </View>
+              <View style={styles.summaryItem}>
+                <Text style={styles.summaryLabel}>Remaining</Text>
+                <Text style={[styles.summaryValue, { color: getMonthlySummary.remaining > 0 ? '#4ade80' : '#ef4444' }]}>
+                  {formatCurrency(getMonthlySummary.remaining)}
+                </Text>
+              </View>
+            </View>
+          )}
+        </View>
+      )}
+
       {activeMonth.transactions.length > 0 && (
         <View style={styles.transactionFiltersPanel}>
           <View style={styles.transactionFilterHeader}>
@@ -16817,6 +16923,132 @@ const createStyles = (
     budgetGuideCard2Amount: {
       fontSize: 15,
       fontWeight: '800' as const,
+      color: theme.text,
+    },
+    alertsBanner: {
+      backgroundColor: '#fee2e2',
+      borderLeftWidth: 4,
+      borderLeftColor: '#dc2626',
+      padding: spacing.md,
+      marginHorizontal: spacing.md,
+      marginBottom: spacing.lg,
+      borderRadius: 8,
+    },
+    alertText: {
+      fontSize: 12,
+      color: '#991b1b',
+      marginBottom: spacing.xs,
+      fontWeight: '600',
+    },
+    paceCard: {
+      backgroundColor: '#f0fdf4',
+      borderRadius: 12,
+      padding: spacing.md,
+      marginHorizontal: spacing.md,
+      marginBottom: spacing.lg,
+      borderLeftWidth: 4,
+      borderLeftColor: '#22c55e',
+    },
+    paceLabel: {
+      fontSize: 11,
+      fontWeight: '600',
+      color: theme.textMuted,
+      textTransform: 'uppercase',
+      letterSpacing: 0.5,
+    },
+    paceValue: {
+      fontSize: 18,
+      fontWeight: '700',
+      color: '#16a34a',
+      marginVertical: 4,
+    },
+    paceText: {
+      fontSize: 12,
+      color: theme.textMuted,
+    },
+    quickCategoriesSection: {
+      paddingHorizontal: spacing.md,
+      marginBottom: spacing.lg,
+    },
+    quickCategoriesGrid: {
+      flexDirection: 'row',
+      gap: spacing.md,
+      flexWrap: 'wrap',
+      marginTop: spacing.sm,
+    },
+    quickCategoryButton: {
+      flex: 1,
+      minWidth: '22%',
+      backgroundColor: theme.surfaceSoft,
+      borderRadius: 10,
+      padding: spacing.sm,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    quickCategoryIcon: {
+      fontSize: 24,
+      marginBottom: 4,
+    },
+    quickCategoryName: {
+      fontSize: 10,
+      fontWeight: '600',
+      color: theme.text,
+      textAlign: 'center',
+    },
+    collapsibleSection: {
+      marginHorizontal: spacing.md,
+      marginBottom: spacing.lg,
+      backgroundColor: theme.surfaceMuted,
+      borderRadius: 12,
+      overflow: 'hidden',
+    },
+    collapsibleHeader: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      paddingHorizontal: spacing.md,
+      paddingVertical: spacing.sm,
+      backgroundColor: theme.surface,
+    },
+    collapsibleToggle: {
+      fontSize: 14,
+      color: theme.textMuted,
+    },
+    collapsibleContent: {
+      paddingHorizontal: spacing.md,
+      paddingVertical: spacing.md,
+      borderTopWidth: 1,
+      borderTopColor: theme.divider,
+    },
+    recurringItem: {
+      fontSize: 13,
+      color: theme.text,
+      marginBottom: spacing.xs,
+      fontWeight: '500',
+    },
+    summaryGrid: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      gap: spacing.md,
+      padding: spacing.md,
+      borderTopWidth: 1,
+      borderTopColor: theme.divider,
+    },
+    summaryItem: {
+      flex: 1,
+      minWidth: '45%',
+    },
+    summaryLabel: {
+      fontSize: 11,
+      fontWeight: '600',
+      color: theme.textMuted,
+      textTransform: 'uppercase',
+      letterSpacing: 0.5,
+      marginBottom: spacing.xs,
+    },
+    summaryValue: {
+      fontSize: 16,
+      fontWeight: '700',
       color: theme.text,
     },
   });
