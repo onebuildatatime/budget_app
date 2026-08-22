@@ -4438,26 +4438,9 @@ export default function App() {
     return insights.slice(0, 3);
   }, [activeMonth, categorySummaries, monthlyLimitNumber, totalSpent]);
 
-  // Gamification: Budget Streak
-  useMemo(() => {
-    if (!activeMonth) return;
-    const isOnBudgetToday = remaining >= 0;
-    if (isOnBudgetToday) {
-      setBudgetStreak(prev => prev + 1);
-
-      // Achievements
-      const newAchievements: string[] = [];
-      if (budgetStreak === 7) newAchievements.push('🏆 7-Day Streak!');
-      if (budgetStreak === 30) newAchievements.push('🎖️ 30-Day Streak!');
-      if (remaining > monthlyLimitNumber * 0.2) newAchievements.push('💰 Great Savings!');
-
-      if (newAchievements.length > 0) {
-        setAchievements(prev => [...new Set([...prev, ...newAchievements])]);
-      }
-    } else {
-      setBudgetStreak(0);
-    }
-  }, [remaining, monthlyLimitNumber, budgetStreak]);
+  // Gamification: Calculate achievements based on budget status
+  const isOnBudgetToday = remaining >= 0;
+  const hasGreatSavings = remaining > monthlyLimitNumber * 0.2;
 
   const submitCategory = ({ keepEditing = false }: { keepEditing?: boolean } = {}) => {
     if (!activeMonth) {
@@ -7315,23 +7298,21 @@ export default function App() {
         )}
       </View>
 
-      {/* Streak Badge & Achievements */}
-      {budgetStreak > 0 && (
+      {/* On Budget Badge */}
+      {isOnBudgetToday && (
         <View style={styles.streakBadge}>
-          <Text style={styles.streakIcon}>🔥</Text>
+          <Text style={styles.streakIcon}>✅</Text>
           <View>
-            <Text style={styles.streakText}>{budgetStreak}-Day Streak!</Text>
-            <Text style={styles.streakSubtext}>Keep it up to unlock badges</Text>
+            <Text style={styles.streakText}>On Budget!</Text>
+            <Text style={styles.streakSubtext}>Keep spending wisely</Text>
           </View>
         </View>
       )}
 
       {/* Achievements */}
-      {achievements.length > 0 && (
+      {hasGreatSavings && (
         <View style={styles.achievementsSection}>
-          {achievements.slice(0, 3).map((ach, idx) => (
-            <Text key={idx} style={styles.achievementBadge}>{ach}</Text>
-          ))}
+          <Text style={styles.achievementBadge}>💰 Great Savings!</Text>
         </View>
       )}
 
