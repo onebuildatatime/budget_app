@@ -1576,10 +1576,19 @@ export default function App() {
   const daysLeftInMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0).getDate() - today.getDate();
   const dailyPace = daysLeftInMonth > 0 ? (remaining / daysLeftInMonth) : 0;
 
-  // Budget alerts
+  // Budget alerts (smart - excludes savings categories)
   useMemo(() => {
     const alerts: string[] = [];
+    const savingsKeywords = ['emergency', 'savings', 'fund', 'reserve', 'goal', 'buffer'];
+
     categorySummaries.forEach(summary => {
+      const isSavingsCategory = savingsKeywords.some(keyword =>
+        summary.category.name.toLowerCase().includes(keyword)
+      );
+
+      // Skip alerts for savings categories
+      if (isSavingsCategory) return;
+
       if (summary.ratio > 1) {
         alerts.push(`${summary.category.name} is over budget by ${formatCurrency(summary.spent - summary.category.planned)}`);
       } else if (summary.ratio >= 1) {
@@ -17003,8 +17012,10 @@ const createStyles = (
     collapsibleSection: {
       marginHorizontal: spacing.md,
       marginBottom: spacing.lg,
-      backgroundColor: theme.surfaceMuted,
-      borderRadius: 12,
+      backgroundColor: '#f0fdf4',
+      borderRadius: 14,
+      borderWidth: 1,
+      borderColor: '#86efac',
       overflow: 'hidden',
     },
     collapsibleHeader: {
@@ -17013,21 +17024,22 @@ const createStyles = (
       alignItems: 'center',
       paddingHorizontal: spacing.md,
       paddingVertical: spacing.sm,
-      backgroundColor: theme.surface,
+      backgroundColor: '#dbeafe' + '0a',
     },
     collapsibleToggle: {
       fontSize: 14,
-      color: theme.textMuted,
+      fontWeight: '600',
+      color: '#16a34a',
     },
     collapsibleContent: {
       paddingHorizontal: spacing.md,
       paddingVertical: spacing.md,
       borderTopWidth: 1,
-      borderTopColor: theme.divider,
+      borderTopColor: '#86efac',
     },
     recurringItem: {
       fontSize: 13,
-      color: theme.text,
+      color: '#166534',
       marginBottom: spacing.xs,
       fontWeight: '500',
     },
@@ -17037,7 +17049,7 @@ const createStyles = (
       gap: spacing.md,
       padding: spacing.md,
       borderTopWidth: 1,
-      borderTopColor: theme.divider,
+      borderTopColor: '#86efac',
     },
     summaryItem: {
       flex: 1,
@@ -17046,7 +17058,7 @@ const createStyles = (
     summaryLabel: {
       fontSize: 11,
       fontWeight: '600',
-      color: theme.textMuted,
+      color: '#65a30d',
       textTransform: 'uppercase',
       letterSpacing: 0.5,
       marginBottom: spacing.xs,
@@ -17054,6 +17066,6 @@ const createStyles = (
     summaryValue: {
       fontSize: 16,
       fontWeight: '700',
-      color: theme.text,
+      color: '#166534',
     },
   });
