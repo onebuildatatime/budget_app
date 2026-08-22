@@ -7112,36 +7112,40 @@ export default function App() {
   ) : (
     <>
       <View style={styles.transactionHeroCard}>
-        <View>
-          <Text style={styles.settingsGroupLabel}>{activityScopeLabel.toUpperCase()}</Text>
-          <Text style={styles.transactionHeroTitle}>
-            {filteredTransactions.length > 0 ? formatCurrency(filteredTransactionTotal) : 'Ready to log'}
-          </Text>
-        </View>
-        <Text style={styles.activityHeroMeta}>{activityHeroMeta}</Text>
+        <View style={styles.transactionHeroContent}>
+          <View style={styles.transactionHeroLeft}>
+            <Text style={styles.transactionHeroLabel}>LEFT THIS MONTH</Text>
+            <Text style={styles.transactionHeroTitle}>
+              {formatCurrency(Math.max(0, monthlyLimitNumber - totalSpent))}
+            </Text>
+            <Text style={styles.transactionHeroMeta}>
+              {formatCurrency(totalSpent)} spent of {formatCurrency(monthlyLimitNumber)}
+            </Text>
 
-        {filteredTransactions.length > 0 && (
-          <View style={styles.transactionStatsGrid}>
-            <View style={styles.transactionStatItem}>
-              <Text style={styles.transactionStatLabel}>Income</Text>
-              <Text style={[styles.transactionStatValue, { color: currentTheme.successText }]}>
-                ${filteredIncomeTotal.toFixed(0)}
+            <View style={styles.transactionHeroProgressBar}>
+              <View
+                style={[
+                  styles.transactionHeroProgressFill,
+                  { width: `${Math.min((totalSpent / monthlyLimitNumber) * 100, 100)}%` }
+                ]}
+              />
+            </View>
+
+            <View style={styles.transactionHeroPlannedSection}>
+              <Text style={styles.transactionHeroLabel}>PLANNED IN CATEGORIES</Text>
+              <Text style={styles.transactionHeroPlannedValue}>
+                {formatCurrency(totalPlanned)}
               </Text>
             </View>
-            <View style={styles.transactionStatItem}>
-              <Text style={styles.transactionStatLabel}>Entries</Text>
-              <Text style={styles.transactionStatValue}>{filteredTransactions.length}</Text>
-            </View>
-            <View style={styles.transactionStatItem}>
-              <Text style={styles.transactionStatLabel}>Largest</Text>
-              <Text style={styles.transactionStatValue}>${transactionStats.largestExpense.toFixed(0)}</Text>
-            </View>
-            <View style={styles.transactionStatItem}>
-              <Text style={styles.transactionStatLabel}>Daily Avg</Text>
-              <Text style={styles.transactionStatValue}>${transactionStats.averagePerDay.toFixed(0)}</Text>
-            </View>
           </View>
-        )}
+
+          <Pressable
+            style={styles.transactionHeroButton}
+            onPress={() => openExpenseCapture()}
+          >
+            <Text style={styles.transactionHeroButtonText}>+ Add expense</Text>
+          </Pressable>
+        </View>
       </View>
 
       {activeMonth.transactions.length > 0 && (
@@ -13677,20 +13681,80 @@ const createStyles = (
       lineHeight: 17,
     },
     transactionHeroCard: {
-      backgroundColor: '#d1fae560',
-      borderRadius: 20,
-      borderWidth: 1,
-      borderColor: '#10b981',
-      padding: 16,
-      gap: 12,
+      backgroundColor: '#1f5f4f',
+      borderRadius: 24,
+      padding: 20,
       marginBottom: spacing.lg,
+      overflow: 'hidden',
+    },
+    transactionHeroContent: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'flex-start',
+    },
+    transactionHeroLeft: {
+      flex: 1,
+      marginRight: spacing.lg,
+    },
+    transactionHeroLabel: {
+      fontSize: 12,
+      fontWeight: '600',
+      color: '#e8f0ed',
+      textTransform: 'uppercase',
+      letterSpacing: 1,
+      marginBottom: spacing.sm,
     },
     transactionHeroTitle: {
-      color: theme.text,
-      fontSize: 28,
+      color: '#ffffff',
+      fontSize: 36,
       fontWeight: '800',
       fontFamily: Platform.select({ ios: 'Georgia', web: 'Georgia, serif' }),
       marginBottom: spacing.xs,
+      lineHeight: 42,
+    },
+    transactionHeroMeta: {
+      color: '#b8d4cc',
+      fontSize: 14,
+      fontWeight: '500',
+      marginBottom: spacing.lg,
+      lineHeight: 20,
+    },
+    transactionHeroProgressBar: {
+      height: 8,
+      backgroundColor: '#164b40',
+      borderRadius: 4,
+      overflow: 'hidden',
+      marginBottom: spacing.lg,
+    },
+    transactionHeroProgressFill: {
+      height: '100%',
+      backgroundColor: '#ffffff',
+      borderRadius: 4,
+    },
+    transactionHeroPlannedSection: {
+      gap: spacing.xs,
+    },
+    transactionHeroPlannedValue: {
+      color: '#ffffff',
+      fontSize: 22,
+      fontWeight: '700',
+      fontFamily: Platform.select({ ios: 'Georgia', web: 'Georgia, serif' }),
+    },
+    transactionHeroButton: {
+      backgroundColor: '#ffffff',
+      borderRadius: 12,
+      paddingHorizontal: 16,
+      paddingVertical: 12,
+      justifyContent: 'center',
+      alignItems: 'center',
+      minHeight: 48,
+      minWidth: 120,
+    },
+    transactionHeroButtonText: {
+      color: '#1f5f4f',
+      fontSize: 14,
+      fontWeight: '700',
+      textAlign: 'center',
     },
     transactionStatsGrid: {
       flexDirection: 'row',
