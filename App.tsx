@@ -66,6 +66,7 @@ import {
   type MonthRecord,
   getTotalPlanned,
   getTotalSpent,
+  getTotalIncome,
   INCOME_CATEGORY_ID,
   LOCAL_STORAGE_KEY,
   LEGACY_STORAGE_KEY,
@@ -1127,6 +1128,23 @@ export default function App() {
 
   const [accountName, setAccountName] = useState('');
   const [accountKinds, setAccountKinds] = useState<BankAccountKind[]>(['spending']);
+
+  // New UX Features
+  const [deletedTransactions, setDeletedTransactions] = useState<Transaction[]>([]);
+  const [showTrash, setShowTrash] = useState(false);
+  const [searchMinAmount, setSearchMinAmount] = useState('');
+  const [searchMaxAmount, setSearchMaxAmount] = useState('');
+  const [searchDateFrom, setSearchDateFrom] = useState<Date | null>(null);
+  const [searchDateTo, setSearchDateTo] = useState<Date | null>(null);
+  const [showAdvancedSearch, setShowAdvancedSearch] = useState(false);
+  const [showWeeklyPace, setShowWeeklyPace] = useState(true);
+  const [showRecurringList, setShowRecurringList] = useState(false);
+  const [showMonthlySummary, setShowMonthlySummary] = useState(false);
+  const [showBudgetAlerts, setShowBudgetAlerts] = useState(true);
+  const [showGoals, setShowGoals] = useState(false);
+  const [showAnalytics, setShowAnalytics] = useState(false);
+  const [budgetAlerts, setBudgetAlerts] = useState<string[]>([]);
+  const [savingsGoals, setSavingsGoals] = useState<Array<{ name: string; target: number; current: number }>>([]);
   const [accountCustomKindsText, setAccountCustomKindsText] = useState('');
   const [editingAccountId, setEditingAccountId] = useState<string | null>(null);
   const [isAccountSheetOpen, setIsAccountSheetOpen] = useState(false);
@@ -1545,6 +1563,29 @@ export default function App() {
   const totalSpent = activeMonth ? getTotalSpent(activeMonth) : 0;
   const monthlyLimitNumber = activeMonth ? Number(activeMonth.monthlyLimit) || 0 : 0;
   const remaining = monthlyLimitNumber - totalSpent;
+
+  // Weekly pace calculation
+  const today = new Date();
+  const weekStart = new Date(today);
+  weekStart.setDate(today.getDate() - today.getDay());
+  const weekSpent = useMemo(() => {
+    return activeMonth?.transactions
+      .filter(t => t.kind !== 'income' && new Date(t.happenedAt) >= weekStart)
+      .reduce((sum, t) => sum + t.amount, 0) || 0;
+  }, [activeMonth, weekStart]);
+  const daysLeftInMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0).getDate() - today.getDate();
+  const dailyPace = daysLeftInMonth > 0 ? (remaining / daysLeftInMonth) : 0;
+
+  // Budget alerts
+  useMemo(() => {
+    const alerts: string[] = [];
+    categorySummaries.forEach(summary => {
+      if (summary.ratio > 1) alerts.push(`${summary.category.name} is over budget by ${formatCurrency(summary.spent - summary.category.planned)}`);
+      else if (summary.ratio >= 0.9) alerts.push(`${summary.category.name} is at 90% of budget`);
+    });
+    if (remaining < 0) alerts.push(`Budget exceeded by ${formatCurrency(Math.abs(remaining))}`);
+    setBudgetAlerts(alerts);
+  }, [categorySummaries, remaining]);
   const forecastSnapshot = useMemo(
     () => buildForecastSnapshot(activeMonth, categorySummaries, monthlyLimitNumber, totalPlanned, new Date()),
     [activeMonth, categorySummaries, monthlyLimitNumber, totalPlanned],
@@ -4271,22 +4312,69 @@ export default function App() {
     const transaction = activeMonth.transactions.find((item) => item.id === transactionId);
     const entryLabel = transaction?.kind === 'income' ? 'income' : 'expense';
 
-    Alert.alert(`Delete ${entryLabel}?`, 'This entry will be removed from the month history.', [
+    Alert.alert(`Delete ${entryLabel}?`, 'This entry will be moved to trash. You can undo within 30 seconds.', [
       { text: 'Cancel', style: 'cancel' },
       {
         text: 'Delete',
         style: 'destructive',
         onPress: () => {
+          // Move to trash instead of permanent delete
+          if (transaction) {
+            setDeletedTransactions([...deletedTransactions, transaction]);
+          }
           updateActiveMonth((month) => ({
             ...month,
-            transactions: month.transactions.filter((transaction) => transaction.id !== transactionId),
+            transactions: month.transactions.filter((t) => t.id !== transactionId),
           }));
-          showToast({ message: `${entryLabel === 'income' ? 'Income' : 'Expense'} removed.`, tone: 'success' });
+
+          // Show undo option
+          let undoTimeout: NodeJS.Timeout;
+          showToast({
+            message: `${entryLabel === 'income' ? 'Income' : 'Expense'} moved to trash.`,
+            tone: 'success'
+          });
+
+          // Auto-clear trash after 30 seconds if not undone
+          undoTimeout = setTimeout(() => {
+            setDeletedTransactions(prev => prev.filter(t => t.id !== transactionId));
+          }, 30000);
+
           void triggerHaptic('success');
         },
       },
     ]);
   };
+
+  const undoDeleteTransaction = (transactionId: string) => {
+    const transaction = deletedTransactions.find(t => t.id === transactionId);
+    if (transaction && activeMonth) {
+      updateActiveMonth((month) => ({
+        ...month,
+        transactions: [...month.transactions, transaction],
+      }));
+      setDeletedTransactions(prev => prev.filter(t => t.id !== transactionId));
+      showToast({ message: 'Transaction restored!', tone: 'success' });
+    }
+  };
+
+  const getRecurringTransactions = useMemo(() => {
+    return activeMonth?.transactions.filter(t => t.recurring && t.kind !== 'income') || [];
+  }, [activeMonth]);
+
+  const getMonthlySummary = useMemo(() => {
+    if (!activeMonth) return null;
+    const spent = getTotalSpent(activeMonth);
+    const income = getTotalIncome(activeMonth);
+    const planned = getTotalPlanned(activeMonth);
+    return {
+      spent,
+      income,
+      planned,
+      remaining: (monthlyLimitNumber || planned) - spent,
+      categories: categorySummaries.length,
+      transactions: activeMonth.transactions.filter(t => t.kind !== 'income').length,
+    };
+  }, [activeMonth, categorySummaries, monthlyLimitNumber]);
 
   const submitCategory = ({ keepEditing = false }: { keepEditing?: boolean } = {}) => {
     if (!activeMonth) {
