@@ -1145,6 +1145,13 @@ export default function App() {
   const [showAnalytics, setShowAnalytics] = useState(false);
   const [budgetAlerts, setBudgetAlerts] = useState<string[]>([]);
   const [savingsGoals, setSavingsGoals] = useState<Array<{ name: string; target: number; current: number }>>([]);
+
+  // Top 3 Features
+  const [budgetStreak, setBudgetStreak] = useState(0);
+  const [achievements, setAchievements] = useState<string[]>([]);
+  const [showReceiptScanner, setShowReceiptScanner] = useState(false);
+  const [receiptAmount, setReceiptAmount] = useState('');
+  const [showInsights, setShowInsights] = useState(false);
   const [accountCustomKindsText, setAccountCustomKindsText] = useState('');
   const [editingAccountId, setEditingAccountId] = useState<string | null>(null);
   const [isAccountSheetOpen, setIsAccountSheetOpen] = useState(false);
@@ -4390,6 +4397,68 @@ export default function App() {
     };
   }, [activeMonth, categorySummaries, monthlyLimitNumber]);
 
+  // Smart Spending Insights
+  const getSpendingInsights = useMemo(() => {
+    if (!activeMonth) return [];
+    const insights: string[] = [];
+    const today = new Date();
+    const weekAgo = new Date(today);
+    weekAgo.setDate(today.getDate() - 7);
+
+    // Week vs Week comparison
+    const thisWeekSpent = activeMonth.transactions
+      .filter(t => t.kind !== 'income' && new Date(t.happenedAt) >= weekAgo)
+      .reduce((sum, t) => sum + t.amount, 0);
+
+    const avgSpendPerDay = thisWeekSpent / 7;
+    if (avgSpendPerDay > (monthlyLimitNumber / 30)) {
+      insights.push(`⚠️ Daily spending is ${((avgSpendPerDay / (monthlyLimitNumber / 30)) * 100).toFixed(0)}% of daily budget`);
+    }
+
+    // Category insights
+    categorySummaries.forEach(cat => {
+      if (cat.ratio > 0.7 && cat.ratio <= 1) {
+        const remaining = cat.category.planned - cat.spent;
+        insights.push(`✓ ${cat.category.name}: ${formatCurrency(remaining)} left`);
+      }
+    });
+
+    // Spending pattern
+    const hasHighWeekendSpend = activeMonth.transactions
+      .filter(t => {
+        const d = new Date(t.happenedAt);
+        return [0, 6].includes(d.getDay());
+      })
+      .reduce((sum, t) => sum + t.amount, 0) > totalSpent * 0.4;
+
+    if (hasHighWeekendSpend) {
+      insights.push(`📈 Your weekend spending is higher than weekdays`);
+    }
+
+    return insights.slice(0, 3);
+  }, [activeMonth, categorySummaries, monthlyLimitNumber, totalSpent]);
+
+  // Gamification: Budget Streak
+  useMemo(() => {
+    if (!activeMonth) return;
+    const isOnBudgetToday = remaining >= 0;
+    if (isOnBudgetToday) {
+      setBudgetStreak(prev => prev + 1);
+
+      // Achievements
+      const newAchievements: string[] = [];
+      if (budgetStreak === 7) newAchievements.push('🏆 7-Day Streak!');
+      if (budgetStreak === 30) newAchievements.push('🎖️ 30-Day Streak!');
+      if (remaining > monthlyLimitNumber * 0.2) newAchievements.push('💰 Great Savings!');
+
+      if (newAchievements.length > 0) {
+        setAchievements(prev => [...new Set([...prev, ...newAchievements])]);
+      }
+    } else {
+      setBudgetStreak(0);
+    }
+  }, [remaining, monthlyLimitNumber, budgetStreak]);
+
   const submitCategory = ({ keepEditing = false }: { keepEditing?: boolean } = {}) => {
     if (!activeMonth) {
       return;
@@ -7245,6 +7314,57 @@ export default function App() {
           </>
         )}
       </View>
+
+      {/* Streak Badge & Achievements */}
+      {budgetStreak > 0 && (
+        <View style={styles.streakBadge}>
+          <Text style={styles.streakIcon}>🔥</Text>
+          <View>
+            <Text style={styles.streakText}>{budgetStreak}-Day Streak!</Text>
+            <Text style={styles.streakSubtext}>Keep it up to unlock badges</Text>
+          </View>
+        </View>
+      )}
+
+      {/* Achievements */}
+      {achievements.length > 0 && (
+        <View style={styles.achievementsSection}>
+          {achievements.slice(0, 3).map((ach, idx) => (
+            <Text key={idx} style={styles.achievementBadge}>{ach}</Text>
+          ))}
+        </View>
+      )}
+
+      {/* Smart Insights */}
+      {getSpendingInsights.length > 0 && (
+        <View style={styles.collapsibleSection}>
+          <Pressable
+            style={styles.collapsibleHeader}
+            onPress={() => setShowInsights(!showInsights)}
+          >
+            <Text style={styles.settingsGroupLabel}>
+              💡 Smart Insights
+            </Text>
+            <Text style={styles.collapsibleToggle}>{showInsights ? '▼' : '▶'}</Text>
+          </Pressable>
+          {showInsights && (
+            <View style={styles.collapsibleContent}>
+              {getSpendingInsights.map((insight, idx) => (
+                <Text key={idx} style={styles.insightText}>{insight}</Text>
+              ))}
+            </View>
+          )}
+        </View>
+      )}
+
+      {/* Receipt Scanner Button */}
+      <Pressable
+        style={styles.receiptScannerButton}
+        onPress={() => setShowReceiptScanner(true)}
+      >
+        <Text style={styles.receiptScannerIcon}>📸</Text>
+        <Text style={styles.receiptScannerText}>Scan Receipt</Text>
+      </Pressable>
 
       {/* Budget Alerts */}
       {budgetAlerts.length > 0 && showBudgetAlerts && (
@@ -17067,5 +17187,73 @@ const createStyles = (
       fontSize: 16,
       fontWeight: '700',
       color: '#166534',
+    },
+    streakBadge: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      backgroundColor: '#fff7ed',
+      borderLeftWidth: 4,
+      borderLeftColor: '#ea580c',
+      padding: spacing.md,
+      marginHorizontal: spacing.md,
+      marginBottom: spacing.lg,
+      borderRadius: 10,
+      gap: spacing.md,
+    },
+    streakIcon: {
+      fontSize: 28,
+    },
+    streakText: {
+      fontSize: 14,
+      fontWeight: '700',
+      color: '#ea580c',
+    },
+    streakSubtext: {
+      fontSize: 11,
+      color: '#9a3412',
+      marginTop: 2,
+    },
+    achievementsSection: {
+      flexDirection: 'row',
+      gap: spacing.sm,
+      paddingHorizontal: spacing.md,
+      marginBottom: spacing.lg,
+      flexWrap: 'wrap',
+    },
+    achievementBadge: {
+      fontSize: 20,
+      backgroundColor: '#ecfdf5',
+      paddingHorizontal: spacing.md,
+      paddingVertical: spacing.xs,
+      borderRadius: 20,
+      borderWidth: 1,
+      borderColor: '#86efac',
+      fontWeight: '600',
+    },
+    insightText: {
+      fontSize: 13,
+      color: '#166534',
+      marginBottom: spacing.sm,
+      fontWeight: '500',
+      lineHeight: 18,
+    },
+    receiptScannerButton: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      backgroundColor: '#1f5f4f',
+      marginHorizontal: spacing.md,
+      marginBottom: spacing.lg,
+      paddingVertical: spacing.md,
+      borderRadius: 12,
+      gap: spacing.sm,
+    },
+    receiptScannerIcon: {
+      fontSize: 20,
+    },
+    receiptScannerText: {
+      color: '#ffffff',
+      fontSize: 14,
+      fontWeight: '700',
     },
   });
