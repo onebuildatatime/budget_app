@@ -41,6 +41,7 @@ type Props = {
   onEdit: () => void;
   onDelete: () => void;
   onQuickLog?: () => void;
+  onRecurringToggle?: () => void;
 };
 
 export const TransactionListItem = memo(function TransactionListItem({
@@ -60,6 +61,7 @@ export const TransactionListItem = memo(function TransactionListItem({
   onEdit,
   onDelete,
   onQuickLog,
+  onRecurringToggle,
 }: Props) {
   const toneBackground =
     tone === 'good'
@@ -128,11 +130,14 @@ export const TransactionListItem = memo(function TransactionListItem({
             </View>
           ) : null}
 
-          {recurring ? (
-            <View style={[styles.tag, { backgroundColor: palette.surfaceSoft }]}>
-              <Text style={[styles.tagText, { color: palette.textMuted }]}>Recurring</Text>
-            </View>
-          ) : null}
+          <Pressable
+            onPress={onRecurringToggle}
+            style={[styles.tag, { backgroundColor: palette.surfaceSoft }]}
+          >
+            <Text style={[styles.tagText, { color: palette.textMuted }]}>
+              {recurring ? 'Recurring' : 'One-time'}
+            </Text>
+          </Pressable>
 
           <View style={[styles.tag, { backgroundColor: toneBackground }]}>
             <Text style={[styles.tagText, { color: toneText }]}>{toneLabel}</Text>
