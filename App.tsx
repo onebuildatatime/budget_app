@@ -1580,8 +1580,13 @@ export default function App() {
   useMemo(() => {
     const alerts: string[] = [];
     categorySummaries.forEach(summary => {
-      if (summary.ratio > 1) alerts.push(`${summary.category.name} is over budget by ${formatCurrency(summary.spent - summary.category.planned)}`);
-      else if (summary.ratio >= 0.9) alerts.push(`${summary.category.name} is at 90% of budget`);
+      if (summary.ratio > 1) {
+        alerts.push(`${summary.category.name} is over budget by ${formatCurrency(summary.spent - summary.category.planned)}`);
+      } else if (summary.ratio >= 1) {
+        alerts.push(`${summary.category.name} is at budget limit`);
+      } else if (summary.ratio >= 0.9) {
+        alerts.push(`${summary.category.name} is approaching budget limit`);
+      }
     });
     if (remaining < 0) alerts.push(`Budget exceeded by ${formatCurrency(Math.abs(remaining))}`);
     setBudgetAlerts(alerts);
