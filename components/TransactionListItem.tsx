@@ -140,9 +140,6 @@ export const TransactionListItem = memo(function TransactionListItem({
         </View>
 
         <View style={styles.cardActions}>
-          {recurring ? (
-            <Text style={[styles.cardActionTag, { color: palette.textMuted }]}>Recurring</Text>
-          ) : null}
           <Pressable
             style={[styles.cardActionButton, { backgroundColor: palette.accentSoft }]}
             onPress={onEdit}
