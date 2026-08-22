@@ -7113,26 +7113,34 @@ export default function App() {
     <>
       <View style={styles.transactionHeroCard}>
         {filteredTransactions.length > 0 && (
-          <View style={styles.transactionHeroStatsGrid}>
-            <View style={styles.transactionHeroStatItem}>
-              <Text style={styles.transactionHeroStatLabel}>Income</Text>
-              <Text style={[styles.transactionHeroStatValue, { color: '#4ade80' }]}>
-                {formatCurrency(filteredIncomeTotal)}
+          <>
+            <View style={styles.transactionHeroTotalSpend}>
+              <Text style={styles.transactionHeroTotalLabel}>Total Spend</Text>
+              <Text style={styles.transactionHeroTotalValue}>
+                {formatCurrency(filteredTransactionTotal)}
               </Text>
             </View>
-            <View style={styles.transactionHeroStatItem}>
-              <Text style={styles.transactionHeroStatLabel}>Entries</Text>
-              <Text style={styles.transactionHeroStatValue}>{filteredTransactions.length}</Text>
+            <View style={styles.transactionHeroStatsGrid}>
+              <View style={styles.transactionHeroStatItem}>
+                <Text style={styles.transactionHeroStatLabel}>Income</Text>
+                <Text style={[styles.transactionHeroStatValue, { color: '#4ade80' }]}>
+                  {formatCurrency(filteredIncomeTotal)}
+                </Text>
+              </View>
+              <View style={styles.transactionHeroStatItem}>
+                <Text style={styles.transactionHeroStatLabel}>Entries</Text>
+                <Text style={styles.transactionHeroStatValue}>{filteredTransactions.length}</Text>
+              </View>
+              <View style={styles.transactionHeroStatItem}>
+                <Text style={styles.transactionHeroStatLabel}>Largest</Text>
+                <Text style={styles.transactionHeroStatValue}>{formatCurrency(transactionStats.largestExpense)}</Text>
+              </View>
+              <View style={styles.transactionHeroStatItem}>
+                <Text style={styles.transactionHeroStatLabel}>Daily Avg</Text>
+                <Text style={styles.transactionHeroStatValue}>{formatCurrency(transactionStats.averagePerDay)}</Text>
+              </View>
             </View>
-            <View style={styles.transactionHeroStatItem}>
-              <Text style={styles.transactionHeroStatLabel}>Largest</Text>
-              <Text style={styles.transactionHeroStatValue}>{formatCurrency(transactionStats.largestExpense)}</Text>
-            </View>
-            <View style={styles.transactionHeroStatItem}>
-              <Text style={styles.transactionHeroStatLabel}>Daily Avg</Text>
-              <Text style={styles.transactionHeroStatValue}>{formatCurrency(transactionStats.averagePerDay)}</Text>
-            </View>
-          </View>
+          </>
         )}
       </View>
 
@@ -13673,6 +13681,26 @@ const createStyles = (
       borderRadius: 16,
       padding: 16,
       marginBottom: spacing.lg,
+    },
+    transactionHeroTotalSpend: {
+      marginBottom: spacing.lg,
+      paddingBottom: spacing.lg,
+      borderBottomWidth: 1,
+      borderBottomColor: '#164b40',
+    },
+    transactionHeroTotalLabel: {
+      fontSize: 12,
+      fontWeight: '600',
+      color: '#b8d4cc',
+      textTransform: 'uppercase',
+      letterSpacing: 0.5,
+      marginBottom: spacing.xs,
+    },
+    transactionHeroTotalValue: {
+      fontSize: 28,
+      fontWeight: '800',
+      fontFamily: Platform.select({ ios: 'Georgia', web: 'Georgia, serif' }),
+      color: '#ffffff',
     },
     transactionHeroStatsGrid: {
       flexDirection: 'row',
