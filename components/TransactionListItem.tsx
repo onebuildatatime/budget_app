@@ -155,7 +155,7 @@ export const TransactionListItem = memo(function TransactionListItem({
             ]}
             onPress={onQuickLog}
           >
-            <Text style={[styles.swipeRailButtonTextPrimary, { color: palette.successText }]}>⚡ Again</Text>
+            <Text style={[styles.swipeRailButtonIcon, { color: palette.successText }]}>↻</Text>
           </Pressable>
         ) : null}
         <Pressable
@@ -170,7 +170,7 @@ export const TransactionListItem = memo(function TransactionListItem({
           ]}
           onPress={onEdit}
         >
-          <Text style={[styles.swipeRailButtonTextPrimary, { color: palette.accentText }]}>Edit</Text>
+          <Text style={[styles.swipeRailButtonIcon, { color: palette.accentText }]}>✎</Text>
         </Pressable>
         <Pressable
           accessibilityRole="button"
@@ -178,7 +178,7 @@ export const TransactionListItem = memo(function TransactionListItem({
           style={[styles.swipeRailButton, { backgroundColor: palette.alertSurface, borderColor: palette.alertSurface }]}
           onPress={onDelete}
         >
-          <Text style={[styles.swipeRailButtonTextDanger, { color: palette.alertText }]}>Delete</Text>
+          <Text style={[styles.swipeRailButtonIcon, { color: palette.alertText }]}>✕</Text>
         </Pressable>
       </View>
     </ScrollView>
@@ -273,12 +273,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
     paddingVertical: 2,
   },
-  swipeRailButtonTextPrimary: {
-    fontSize: 9,
-    fontWeight: '700',
-  },
-  swipeRailButtonTextDanger: {
-    fontSize: 9,
-    fontWeight: '700',
+  swipeRailButtonIcon: {
+    fontSize: 14,
+    fontWeight: '600',
+    lineHeight: 16,
   },
 });
