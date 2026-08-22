@@ -4442,6 +4442,81 @@ export default function App() {
   const isOnBudgetToday = remaining >= 0;
   const hasGreatSavings = remaining > monthlyLimitNumber * 0.2;
 
+  // 1. Auto-Categorization Keywords
+  const categoryKeywords: Record<string, string[]> = {
+    'Coffee': ['starbucks', 'coffee', 'espresso', 'cafe', 'café', 'barista'],
+    'Groceries': ['grocery', 'supermarket', 'whole foods', 'trader', 'safeway', 'walmart', 'food'],
+    'Dining': ['restaurant', 'pizza', 'burger', 'sushi', 'dinner', 'lunch', 'brunch'],
+    'Transport': ['uber', 'lyft', 'taxi', 'gas', 'fuel', 'parking', 'transit'],
+    'Entertainment': ['movie', 'cinema', 'spotify', 'netflix', 'game', 'concert'],
+  };
+
+  // 2. Anomaly Detection
+  const getAnomalies = useMemo(() => {
+    const anomalies: string[] = [];
+    const avgTransaction = totalSpent / (activeMonth?.transactions.filter(t => t.kind !== 'income').length || 1);
+
+    activeMonth?.transactions.forEach(t => {
+      if (t.kind !== 'income' && t.amount > avgTransaction * 3) {
+        anomalies.push(`⚠️ Large expense: ${formatCurrency(t.amount)} (${Math.round(t.amount / avgTransaction)}x average)`);
+      }
+    });
+
+    // Detect duplicates
+    const recentTransactions = activeMonth?.transactions.slice(-20) || [];
+    const duplicates = recentTransactions.filter((t, i) =>
+      recentTransactions.some((other, j) =>
+        i !== j && Math.abs(t.amount - other.amount) < 0.01 &&
+        Math.abs(new Date(t.happenedAt).getTime() - new Date(other.happenedAt).getTime()) < 3600000
+      )
+    );
+
+    if (duplicates.length > 0) {
+      anomalies.push('🔄 Possible duplicate transaction detected');
+    }
+
+    return anomalies.slice(0, 2);
+  }, [activeMonth, totalSpent]);
+
+  // 3. Predictive Spending
+  const getProjectedSpendingInfo = useMemo(() => {
+    const daysInMonth = new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0).getDate();
+    const currentDay = new Date().getDate();
+    const daysLeft = daysInMonth - currentDay;
+    const avgDailySpend = totalSpent / currentDay;
+    const projectedTotal = totalSpent + (avgDailySpend * daysLeft);
+    const projectedRemaining = monthlyLimitNumber - projectedTotal;
+
+    return {
+      avgDailySpend,
+      projectedTotal,
+      projectedRemaining,
+      status: projectedTotal > monthlyLimitNumber ? 'over' : 'on-track',
+    };
+  }, [totalSpent, monthlyLimitNumber]);
+
+  // 4. Smart Recommendations
+  const getRecommendations = useMemo(() => {
+    const recs: string[] = [];
+
+    categorySummaries.forEach(cat => {
+      if (cat.ratio > 0.8 && cat.ratio < 1) {
+        recs.push(`💡 ${cat.category.name}: Only ${formatCurrency(cat.left)} left`);
+      }
+      if (cat.spent > cat.category.planned) {
+        const overage = cat.spent - cat.category.planned;
+        recs.push(`📊 ${cat.category.name} over by ${formatCurrency(overage)}`);
+      }
+    });
+
+    // Budget allocation tips
+    if (totalSpent / monthlyLimitNumber > 0.7) {
+      recs.push('⚠️ You\'re at 70% of monthly budget');
+    }
+
+    return recs.slice(0, 3);
+  }, [categorySummaries, totalSpent, monthlyLimitNumber]);
+
   const submitCategory = ({ keepEditing = false }: { keepEditing?: boolean } = {}) => {
     if (!activeMonth) {
       return;
@@ -7316,22 +7391,35 @@ export default function App() {
         </View>
       )}
 
-      {/* Smart Insights */}
-      {getSpendingInsights.length > 0 && (
+      {/* Smart Alerts - Anomalies, Predictions, Recommendations */}
+      {(getAnomalies.length > 0 || getRecommendations.length > 0 || getSpendingInsights.length > 0) && (
         <View style={styles.collapsibleSection}>
           <Pressable
             style={styles.collapsibleHeader}
             onPress={() => setShowInsights(!showInsights)}
           >
             <Text style={styles.settingsGroupLabel}>
-              💡 Smart Insights
+              🧠 Smart Insights
             </Text>
             <Text style={styles.collapsibleToggle}>{showInsights ? '▼' : '▶'}</Text>
           </Pressable>
           {showInsights && (
             <View style={styles.collapsibleContent}>
+              {/* Anomalies */}
+              {getAnomalies.map((anomaly, idx) => (
+                <Text key={`anom-${idx}`} style={styles.insightText}>{anomaly}</Text>
+              ))}
+              {/* Predictions */}
+              <Text style={styles.insightText}>
+                📈 At current pace: {formatCurrency(getProjectedSpendingInfo.projectedTotal)} by month end
+              </Text>
+              {/* Recommendations */}
+              {getRecommendations.map((rec, idx) => (
+                <Text key={`rec-${idx}`} style={styles.insightText}>{rec}</Text>
+              ))}
+              {/* Spending Insights */}
               {getSpendingInsights.map((insight, idx) => (
-                <Text key={idx} style={styles.insightText}>{insight}</Text>
+                <Text key={`ins-${idx}`} style={styles.insightText}>{insight}</Text>
               ))}
             </View>
           )}
