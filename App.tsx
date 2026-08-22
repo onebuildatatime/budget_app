@@ -13826,7 +13826,7 @@ const createStyles = (
       fontSize: 13,
     },
     transactionListPanel: {
-      paddingHorizontal: spacing.lg,
+      paddingHorizontal: spacing.md,
     },
     activityHeroActions: {
       flexDirection: 'row',
