@@ -195,6 +195,7 @@ export type CategorySummary = {
 export const LOCAL_STORAGE_KEY = 'budget-buddy:app-state:v2';
 export const LEGACY_STORAGE_KEY = 'budget-buddy:dashboard-state:v1';
 export const INCOME_CATEGORY_ID = '__income__';
+export const UNCATEGORIZED_CATEGORY_ID = '__uncategorized__';
 export const getUserStorageKey = (userId: string) => `${LOCAL_STORAGE_KEY}:user:${userId}`;
 export const defaultCurrencyCode: CurrencyCode = 'USD';
 export const defaultLanguageCode: LanguageCode = 'en';
@@ -356,12 +357,12 @@ export const featuredLanguageCodes: LanguageCode[] = [
 export const appThemes: Record<AppThemeId, AppTheme> = {
   indigo: {
     id: 'indigo',
-    name: 'Budget Buddy',
-    description: 'Warm paper, quiet sage, and a touch of candlelight.',
-    background: '#FAF5EF',
-    orbPrimary: '#DDE8DE',
-    orbSecondary: '#F5E4D6',
-    orbTertiary: '#EDE5D7',
+    name: 'Warm Light',
+    description: 'Soft ivory, sage progress, and a copper touch.',
+    background: '#F4F1EA',
+    orbPrimary: '#E5E8DF',
+    orbSecondary: '#EFE4D7',
+    orbTertiary: '#E8E4DA',
     hero: '#FFFCF8',
     heroShadow: '#D8CFC3',
     heroChip: '#E7EFE8',
@@ -376,20 +377,20 @@ export const appThemes: Record<AppThemeId, AppTheme> = {
     heroPanelSoft: '#F5EDE3',
     surface: '#FFFCF8',
     surfaceSoft: '#FFF9F2',
-    surfaceTint: '#EDF3ED',
-    surfaceMuted: '#F8F1E9',
+    surfaceTint: '#E9ECE6',
+    surfaceMuted: '#F0EEE8',
     surfaceStrong: '#E2ECE3',
     text: '#2E342F',
     textMuted: '#68716A',
     textSoft: '#8B938C',
     placeholder: '#AAB0AA',
-    accent: '#6B8773',
-    accentSoft: '#E5EEE6',
-    accentText: '#4C6856',
-    accentBorder: '#C5D5C8',
-    progressTrack: '#E8E1D8',
-    progressGood: '#6B8773',
-    progressWarning: '#D3A55F',
+    accent: '#A9602F',
+    accentSoft: '#EFE2D5',
+    accentText: '#874D2A',
+    accentBorder: '#DABDA4',
+    progressTrack: '#E0E2DA',
+    progressGood: '#829A82',
+    progressWarning: '#B9874B',
     progressAlert: '#C87565',
     successSurface: '#E8F1E9',
     successText: '#4D7159',
@@ -400,59 +401,59 @@ export const appThemes: Record<AppThemeId, AppTheme> = {
     divider: '#E7DED3',
     shadow: '#BDB2A5',
     switchOff: '#D8D0C6',
-    switchOn: '#6B8773',
+    switchOn: '#A9602F',
     switchThumbOn: '#FFFFFF',
     switchThumbOff: '#FFFFFF',
   },
   emerald: {
     id: 'emerald',
-    name: 'Forest Night',
-    description: 'Deep green with warm gold for a focused dark mode.',
-    background: '#071A14',
-    orbPrimary: '#0D5B47',
-    orbSecondary: '#0D6B54',
-    orbTertiary: '#106B54',
-    hero: '#0F7A5F',
-    heroShadow: '#051B12',
-    heroChip: 'rgba(34, 197, 94, 0.15)',
-    heroChipText: '#10B981',
-    heroStatusGood: '#065F46',
-    heroStatusAlert: '#7C2D12',
-    heroStatusGoodText: '#10B981',
-    heroStatusAlertText: '#FB923C',
-    heroText: '#F0FDF4',
-    heroMuted: '#86EFAC',
-    heroPanel: '#0D6B54',
-    heroPanelSoft: '#13825F',
-    surface: 'rgba(13, 107, 84, 0.97)',
-    surfaceSoft: '#0F8B6E',
-    surfaceTint: '#10A866',
-    surfaceMuted: '#051F1A',
-    surfaceStrong: '#139375',
-    text: '#ECFDF5',
-    textMuted: '#A7F3D0',
-    textSoft: '#6EE7B7',
-    placeholder: '#34D399',
-    accent: '#F59E0B',
-    accentSoft: '#A16207',
-    accentText: '#FCD34D',
-    accentBorder: '#F59E0B',
-    progressTrack: '#10A866',
-    progressGood: '#10B981',
-    progressWarning: '#F59E0B',
-    progressAlert: '#EF4444',
-    successSurface: '#064E3B',
-    successText: '#10B981',
-    warningSurface: '#78350F',
-    warningText: '#FCD34D',
-    alertSurface: '#7C2D12',
-    alertText: '#FCA5A5',
-    divider: '#10A866',
+    name: 'Charcoal & Copper',
+    description: 'Quiet charcoal, warm copper, and sage progress.',
+    background: '#0D151A',
+    orbPrimary: '#142127',
+    orbSecondary: '#19272D',
+    orbTertiary: '#1B282E',
+    hero: '#1A262C',
+    heroShadow: '#050A0D',
+    heroChip: '#30271F',
+    heroChipText: '#E0A46F',
+    heroStatusGood: '#26372D',
+    heroStatusAlert: '#432D2A',
+    heroStatusGoodText: '#A8C9AA',
+    heroStatusAlertText: '#E39A8C',
+    heroText: '#F5F1E8',
+    heroMuted: '#A5B0B3',
+    heroPanel: '#1A262C',
+    heroPanelSoft: '#233138',
+    surface: '#19242A',
+    surfaceSoft: '#202D33',
+    surfaceTint: '#29373D',
+    surfaceMuted: '#111B20',
+    surfaceStrong: '#344148',
+    text: '#F2EFE8',
+    textMuted: '#B5BFC0',
+    textSoft: '#87969B',
+    placeholder: '#708087',
+    accent: '#CF8749',
+    accentSoft: '#3B2F26',
+    accentText: '#E4AA75',
+    accentBorder: '#6E4C31',
+    progressTrack: '#354148',
+    progressGood: '#88B393',
+    progressWarning: '#D2A563',
+    progressAlert: '#D7786D',
+    successSurface: '#25392E',
+    successText: '#A4CBAA',
+    warningSurface: '#403629',
+    warningText: '#E2BD82',
+    alertSurface: '#432D2A',
+    alertText: '#E39A8C',
+    divider: '#2C3940',
     shadow: '#000000',
-    switchOff: '#10A866',
-    switchOn: '#059669',
-    switchThumbOn: '#34D399',
-    switchThumbOff: '#A7F3D0',
+    switchOff: '#3B484E',
+    switchOn: '#CF8749',
+    switchThumbOn: '#F5F1E8',
+    switchThumbOff: '#A5B0B3',
   },
   slate: {
     id: 'slate',
@@ -956,7 +957,7 @@ export const appThemes: Record<AppThemeId, AppTheme> = {
   },
 };
 
-export const appThemeOrder: AppThemeId[] = ['indigo', 'garden', 'warmclay', 'emerald'];
+export const appThemeOrder: AppThemeId[] = ['emerald', 'indigo', 'garden', 'warmclay'];
 
 export const categoryThemes: Record<
   ThemeId,
@@ -1383,7 +1384,7 @@ export const parseSubcategoryInput = (value: unknown) => {
 const normalizeThemeId = (value: unknown, fallback: ThemeId): ThemeId =>
   typeof value === 'string' && themeCycle.includes(value as ThemeId) ? (value as ThemeId) : fallback;
 
-const normalizeAppThemeId = (value: unknown, fallback: AppThemeId = 'indigo'): AppThemeId =>
+const normalizeAppThemeId = (value: unknown, fallback: AppThemeId = 'emerald'): AppThemeId =>
   typeof value === 'string' && appThemeOrder.includes(value as AppThemeId)
     ? (value as AppThemeId)
     : fallback;
@@ -1446,7 +1447,7 @@ export const parseBankAccountCustomKinds = (value: unknown) => {
 const normalizePreferences = (value: unknown): AppPreferences => {
   if (!isRecord(value)) {
     return {
-      appThemeId: 'indigo',
+      appThemeId: 'emerald',
       cloudBackupEnabled: false,
       currencyCode: defaultCurrencyCode,
       languageCode: defaultLanguageCode,
@@ -1616,7 +1617,10 @@ const normalizeMonthRecord = (
         .map((item) => normalizeTransaction(item))
         .filter(
           (item): item is Transaction =>
-            item !== null && (item.kind === 'income' || categoryIds.has(item.categoryId)),
+            item !== null &&
+            (item.kind === 'income' ||
+              item.categoryId === UNCATEGORIZED_CATEGORY_ID ||
+              categoryIds.has(item.categoryId)),
         )
     : [];
 
@@ -1681,7 +1685,7 @@ export const createInitialBudgetState = (referenceDate = new Date()): BudgetAppS
     accounts: [],
     goals: [],
     preferences: {
-      appThemeId: 'indigo',
+      appThemeId: 'emerald',
       cloudBackupEnabled: false,
       currencyCode: defaultCurrencyCode,
       languageCode: defaultLanguageCode,
@@ -1863,7 +1867,7 @@ export const migrateLegacyDashboardState = (
     accounts: [],
     goals: [],
     preferences: {
-      appThemeId: 'indigo',
+      appThemeId: 'emerald',
       cloudBackupEnabled: false,
       currencyCode: defaultCurrencyCode,
       languageCode: defaultLanguageCode,

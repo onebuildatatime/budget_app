@@ -9,6 +9,7 @@ import {
   getProjectedSpend,
   isValidMonthId,
   normalizeBudgetAppState,
+  UNCATEGORIZED_CATEGORY_ID,
   type BudgetAppState,
   type Category,
   type MonthRecord,
@@ -173,6 +174,7 @@ test('normalizeBudgetAppState drops malformed restored data without inventing re
             categories: [buildCategory()],
             transactions: [
               buildTransaction(),
+              buildTransaction({ id: 'uncategorized', categoryId: UNCATEGORIZED_CATEGORY_ID }),
               buildTransaction({ id: 'bad-date', happenedAt: 'not-a-date' }),
               buildTransaction({ id: 'orphan', categoryId: 'missing-category' }),
             ],
@@ -201,7 +203,10 @@ test('normalizeBudgetAppState drops malformed restored data without inventing re
   assert.deepEqual(normalized.preferences.recentLanguageCodes, ['fr']);
   assert.equal(normalized.months.length, 1);
   assert.equal(normalized.months[0]?.monthlyLimit, '0');
-  assert.deepEqual(normalized.months[0]?.transactions.map((transaction) => transaction.id), ['txn-1']);
+  assert.deepEqual(normalized.months[0]?.transactions.map((transaction) => transaction.id), [
+    'txn-1',
+    'uncategorized',
+  ]);
 });
 
 test('normalizeBudgetAppState preserves valid subcategory budgets only', () => {

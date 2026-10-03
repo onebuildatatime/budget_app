@@ -67,6 +67,7 @@ import {
   getTotalSpent,
   getTotalIncome,
   INCOME_CATEGORY_ID,
+  UNCATEGORIZED_CATEGORY_ID,
   LOCAL_STORAGE_KEY,
   LEGACY_STORAGE_KEY,
   normalizeBudgetAppState,
@@ -1001,6 +1002,8 @@ export default function App() {
   const [expenseSubcategory, setExpenseSubcategory] = useState('');
   const [expenseAccountId, setExpenseAccountId] = useState('');
   const [expenseDate, setExpenseDate] = useState(() => new Date());
+  const [showExpenseNote, setShowExpenseNote] = useState(false);
+  const [showExpenseAdvanced, setShowExpenseAdvanced] = useState(false);
   const [expenseRecurring, setExpenseRecurring] = useState(false);
   const [expenseContextCategoryId, setExpenseContextCategoryId] = useState<string | null>(null);
   const [showExpenseDatePicker, setShowExpenseDatePicker] = useState(false);
@@ -1178,6 +1181,7 @@ export default function App() {
   const budgetStageMinHeight = 0;
 
   const currentTheme = appThemes[appState.preferences.appThemeId];
+  const statusBarStyle: 'light' | 'dark' = appState.preferences.appThemeId === 'emerald' ? 'light' : 'dark';
   const currentCurrencyCode = appState.preferences.currencyCode;
   const currentLanguageCode = appState.preferences.languageCode;
   const localeTag = getLocaleTag(currentLanguageCode);
@@ -2317,6 +2321,15 @@ export default function App() {
     return [
       ...recentExpenseCategories,
       ...activeMonth.categories.filter((category) => !recentIds.has(category.id)),
+      {
+        id: UNCATEGORIZED_CATEGORY_ID,
+        name: 'Uncategorized',
+        planned: 0,
+        subcategories: [],
+        bucket: 'wants' as const,
+        themeId: 'clay' as const,
+        recurring: false,
+      },
     ];
   }, [activeMonth.categories, recentExpenseCategories]);
 
@@ -2539,9 +2552,9 @@ export default function App() {
       subtitle: 'This month at a glance.',
     },
     spend: {
-      label: 'Transactions',
-      title: 'Transactions',
-      subtitle: 'Your recent spending.',
+      label: 'Activity',
+      title: 'Activity',
+      subtitle: 'Your expenses and income.',
     },
     plan: {
       label: 'Plan',
@@ -2669,6 +2682,8 @@ export default function App() {
     setExpenseAccountId(bankAccounts[0]?.id ?? '');
     setExpenseDate(getDefaultExpenseDate(activeMonth?.id ?? getMonthId(new Date())));
     setExpenseRecurring(false);
+    setShowExpenseNote(false);
+    setShowExpenseAdvanced(false);
     setExpenseContextCategoryId(null);
     setExpenseAiSuggestion(null);
     setExpenseAiError('');
@@ -2740,11 +2755,6 @@ export default function App() {
     nextScreen: ScreenId | null = 'spend',
     subcategory?: string,
   ) => {
-    if (activeMonth.categories.length === 0) {
-      openPlanCategories();
-      return;
-    }
-
     resetTransactionForm();
 
     if (categoryId) {
@@ -2758,7 +2768,7 @@ export default function App() {
         recentExpenseCategoryIds[0] ??
         (activeMonth.categories.some((category) => category.id === expenseCategoryId)
           ? expenseCategoryId
-          : activeMonth.categories[0]?.id ?? '');
+          : activeMonth.categories[0]?.id ?? UNCATEGORIZED_CATEGORY_ID);
       const preferredCategory = activeMonth.categories.find(
         (category) => category.id === preferredCategoryId,
       );
@@ -2790,6 +2800,7 @@ export default function App() {
     const category = categoryMap.get(transaction.categoryId);
     setExpenseAmount(String(Number(transaction.amount.toFixed(2))));
     setExpenseNote(transaction.note);
+    setShowExpenseNote(Boolean(transaction.note.trim()));
     setExpenseCategoryId(transaction.categoryId);
     setExpenseSubcategory(resolveExpenseSubcategory(category, transaction.subcategory));
     setExpenseAccountId(transaction.accountId ?? bankAccounts[0]?.id ?? '');
@@ -4008,11 +4019,15 @@ export default function App() {
     setEditingTransactionId(transaction.id);
     setExpenseAmount(String(transaction.amount));
     setExpenseNote(transaction.note);
+    setShowExpenseNote(Boolean(transaction.note.trim()));
     setExpenseCategoryId(transaction.categoryId);
     setExpenseSubcategory(transaction.subcategory ?? '');
     setExpenseAccountId(transaction.accountId ?? '');
     setExpenseDate(clampDateToMonth(new Date(transaction.happenedAt), activeMonth.id));
     setExpenseRecurring(transaction.recurring);
+    setShowExpenseAdvanced(
+      Boolean(transaction.subcategory || transaction.accountId || transaction.recurring),
+    );
     setShowExpenseDatePicker(false);
     setIsExpenseSheetOpen(true);
     navigateToScreen('spend');
@@ -4820,33 +4835,11 @@ export default function App() {
   ] as const;
 
   const renderExpenseForm = () => {
-    if (activeMonth.categories.length === 0) {
-      return (
-        <View style={styles.emptyState}>
-          <Text style={styles.emptyTitle}>Start with a category</Text>
-          <Text style={styles.emptyText}>
-            Add your first category in Plan, then come back here to log expenses against it.
-          </Text>
-          <View style={styles.emptyActionRow}>
-            <Button
-              variant="secondary"
-              size="medium"
-              onPress={() => {
-                resetTransactionForm();
-                openPlanCategories();
-              }}
-            >
-              Open plan
-            </Button>
-          </View>
-        </View>
-      );
-    }
-
     return (
       <>
         <View style={styles.expenseFormStack}>
           <View style={styles.expenseEntryAmountCard}>
+            <Text style={styles.fieldLabel}>Amount</Text>
             <View style={styles.expenseAmountRow}>
               <Text style={styles.expenseEntryAmountCurrency}>{activeMonthCurrencyMarker}</Text>
               <TextInput
@@ -4909,23 +4902,6 @@ export default function App() {
         ) : null}
 
         <View style={styles.expenseCoreFields}>
-          <View style={styles.expenseNoteField}>
-            <TextInput
-              style={styles.expenseDescriptionInput}
-              value={expenseNote}
-              onChangeText={setExpenseNote}
-              returnKeyType="done"
-              onSubmitEditing={() => {
-                if (expenseCategoryId && Number(expenseAmount) > 0) {
-                  submitTransaction();
-                }
-              }}
-              placeholder="What was this for? (optional)"
-              placeholderTextColor={currentTheme.placeholder}
-              selectionColor={currentTheme.accent}
-            />
-          </View>
-
           <Pressable style={styles.expenseDateRow} onPress={openExpenseDatePicker}>
             <View style={styles.expenseDetailCopy}>
               <Text style={styles.expenseDetailLabel}>Date</Text>
@@ -4953,6 +4929,46 @@ export default function App() {
             </View>
           ) : null}
 
+          {showExpenseNote ? (
+            <View style={styles.expenseNoteField}>
+              <TextInput
+                style={styles.expenseDescriptionInput}
+                value={expenseNote}
+                onChangeText={setExpenseNote}
+                returnKeyType="done"
+                onSubmitEditing={() => {
+                  if (expenseCategoryId && Number(expenseAmount) > 0) {
+                    submitTransaction();
+                  }
+                }}
+                placeholder="What was this for? (optional)"
+                placeholderTextColor={currentTheme.placeholder}
+                selectionColor={currentTheme.accent}
+              />
+            </View>
+          ) : (
+            <Pressable
+              style={styles.expenseDateRow}
+              onPress={() => setShowExpenseNote(true)}
+              accessibilityRole="button"
+            >
+              <Text style={styles.planTextAction}>＋ Add a note</Text>
+            </Pressable>
+          )}
+
+          <Pressable
+            style={styles.expensePickerRow}
+            onPress={() => setShowExpenseAdvanced((current) => !current)}
+            accessibilityRole="button"
+          >
+            <Text style={styles.expensePickerLabel}>
+              {showExpenseAdvanced ? 'Fewer options' : 'More options'}
+            </Text>
+            <Text style={styles.expensePickerChevron}>{showExpenseAdvanced ? '−' : '+'}</Text>
+          </Pressable>
+
+          {showExpenseAdvanced ? (
+            <>
           {selectedExpenseSubcategories.length > 0 ? (
             <View>
               <Pressable
@@ -5033,17 +5049,21 @@ export default function App() {
             </View>
           ) : null}
 
-          <Pressable
-            style={styles.expenseRepeatRow}
-            onPress={() => setExpenseRecurring((current) => !current)}
-            accessibilityRole="checkbox"
-            accessibilityState={{ checked: expenseRecurring }}
-          >
-            <View style={[styles.expenseRepeatCheckbox, expenseRecurring && styles.expenseRepeatCheckboxActive]}>
-              {expenseRecurring ? <Text style={styles.expenseRepeatCheck}>✓</Text> : null}
-            </View>
-            <Text style={styles.expenseRepeatTitle}>Repeat next month</Text>
-          </Pressable>
+          {expenseCategoryId !== UNCATEGORIZED_CATEGORY_ID ? (
+            <Pressable
+              style={styles.expenseRepeatRow}
+              onPress={() => setExpenseRecurring((current) => !current)}
+              accessibilityRole="checkbox"
+              accessibilityState={{ checked: expenseRecurring }}
+            >
+              <View style={[styles.expenseRepeatCheckbox, expenseRecurring && styles.expenseRepeatCheckboxActive]}>
+                {expenseRecurring ? <Text style={styles.expenseRepeatCheck}>✓</Text> : null}
+              </View>
+              <Text style={styles.expenseRepeatTitle}>Repeat next month</Text>
+            </Pressable>
+          ) : null}
+            </>
+          ) : null}
         </View>
       </>
     );
@@ -5606,9 +5626,9 @@ export default function App() {
       </View>
 
       <View style={styles.planListHeader}>
-        <View>
-          <Text style={styles.settingsGroupLabel}>CATEGORIES</Text>
-          <Text style={styles.planListTitle}>{categorySummaries.length} in this month</Text>
+        <View style={styles.planCategoryHeading}>
+          <Text style={styles.planListTitle}>Categories</Text>
+          <Text style={styles.planCategoryCount}>{categorySummaries.length}</Text>
         </View>
         {activeMonth.categories.length > 0 && !showCategoryComposer ? (
           <View style={styles.planListHeaderActions}>
@@ -5657,7 +5677,7 @@ export default function App() {
                   <View style={styles.planCategoryCopy}>
                     <Text style={styles.planCategoryName}>{summary.category.name}</Text>
                     <Text style={styles.planCategoryMeta}>
-                      {formatCurrency(summary.spent)} of {formatCurrency(summary.category.planned)} spent
+                      {formatCurrency(summary.spent)} spent
                     </Text>
                   </View>
                   <View style={styles.homePlanRemaining}>
@@ -5698,10 +5718,6 @@ export default function App() {
                 </View>
 
                 <View style={styles.planCategoryActions}>
-                  <Text style={styles.planCategoryBucket}>
-                    {categoryBucketMeta[summary.category.bucket].label}
-                    {summary.category.recurring ? ' · repeats monthly' : ''}
-                  </Text>
                   {isReorderingCategories ? (
                     <View style={styles.planReorderControls}>
                       <Pressable
@@ -5919,38 +5935,20 @@ export default function App() {
               <Text style={styles.homeBrandCaption}>A calmer way to plan</Text>
             </View>
           </View>
-          <Pressable
-            onPress={() => openMoreSection('overview')}
-            style={styles.homeBrandAction}
-            accessibilityRole="button"
-            accessibilityLabel="Open settings"
-          >
-            <Text style={styles.homeBrandActionText}>•••</Text>
-          </Pressable>
         </View>
 
         <View style={styles.homePulseTopRow}>
           <View>
-            <Text style={styles.settingsGroupLabel}>MONTHLY OVERVIEW</Text>
+            <Text style={styles.settingsGroupLabel}>YOUR BUDGET</Text>
             <Text style={styles.homePulseMonth}>{getMonthLabel(activeMonth.id, localeTag)}</Text>
-          </View>
-          <View style={styles.homeStatusPill}>
-            <View
-              style={[
-                styles.homeStatusDot,
-                { backgroundColor: remaining < 0 ? currentTheme.progressAlert : currentTheme.progressGood },
-              ]}
-            />
-            <Text style={styles.homeStatusText}>{remaining < 0 ? 'Needs care' : 'On track'}</Text>
           </View>
         </View>
 
         {hasActiveBudget ? (
           <>
             <View style={styles.homePulseCard}>
-              <View style={styles.homeDecorativeGlow} />
               <Text style={styles.homePulseEyebrow}>
-                {remaining >= 0 ? 'LEFT THIS MONTH' : 'OVER BUDGET THIS MONTH'}
+                {remaining >= 0 ? 'LEFT TO SPEND' : 'OVER YOUR MONTHLY BUDGET'}
               </Text>
               <Text style={styles.homePulseAmount}>{formatCurrency(Math.abs(remaining))}</Text>
               <Text style={styles.homePulseSupport}>
@@ -5974,19 +5972,13 @@ export default function App() {
                 />
               </View>
 
-              <View style={styles.homePulseBottomRow}>
-                <View>
-                  <Text style={styles.homePulseStatLabel}>PLANNED IN CATEGORIES</Text>
-                  <Text style={styles.homePulseStatValue}>{formatCurrency(totalPlanned)}</Text>
-                </View>
-                <Pressable
-                  style={styles.homePulseCompactAction}
-                  onPress={() => openExpenseCapture(undefined, null)}
-                >
-                  <Text style={styles.homePulseCompactActionText}>＋ Add expense</Text>
-                </Pressable>
-              </View>
             </View>
+            <Pressable
+              style={[styles.homePulseCompactAction, styles.homePulsePrimaryAction]}
+              onPress={() => openExpenseCapture(undefined, null)}
+            >
+              <Text style={styles.homePulseCompactActionText}>＋  Add expense</Text>
+            </Pressable>
 
             <View style={styles.homePlanSection}>
               <View style={styles.homeSectionHeadingRow}>
@@ -6016,8 +6008,7 @@ export default function App() {
                         <View style={styles.planCategoryCopy}>
                           <Text style={styles.planCategoryName}>{summary.category.name}</Text>
                           <Text style={styles.planCategoryMeta}>
-                            {formatCurrency(summary.spent)} of{' '}
-                            {formatCurrency(summary.category.planned)} spent
+                      {formatCurrency(summary.spent)} spent
                           </Text>
                         </View>
                         <View style={styles.homePlanRemaining}>
@@ -6094,15 +6085,15 @@ export default function App() {
                       >
                         <View style={[styles.homeRecentIcon, { backgroundColor: categoryTheme.bubble }]}>
                           <Text style={[styles.homeRecentIconText, { color: categoryTheme.bubbleText }]}>
-                            {isIncome ? '＋' : getCategoryIcon(category?.name ?? 'Other')}
+                          {isIncome ? '＋' : getCategoryIcon(category?.name ?? 'Uncategorized')}
                           </Text>
                         </View>
                         <View style={styles.homeRecentCopy}>
                           <Text style={styles.homeRecentTitle} numberOfLines={1}>
-                            {getTransactionDisplayTitle(transaction, category?.name ?? 'Other')}
+                            {getTransactionDisplayTitle(transaction, category?.name ?? 'Uncategorized')}
                           </Text>
                           <Text style={styles.homeRecentMeta}>
-                            {category?.name ?? (isIncome ? 'Income' : 'Other')} ·{' '}
+                            {category?.name ?? (isIncome ? 'Income' : 'Uncategorized')} ·{' '}
                             {formatTransactionDate(transaction.happenedAt, localeTag)}
                           </Text>
                         </View>
@@ -6143,6 +6134,9 @@ export default function App() {
               <Text style={styles.homePulseActionText}>
                 {monthlyLimitNumber > 0 ? 'Continue budget' : `Create ${activeMonthName} budget`}
               </Text>
+            </Pressable>
+            <Pressable onPress={() => openExpenseCapture(undefined, null)}>
+              <Text style={styles.homeStartCopyText}>Log an expense without a plan</Text>
             </Pressable>
             {previousBudgetMonth ? (
               <Pressable style={styles.homeStartCopyButton} onPress={copyPreviousBudgetIntoActiveMonth}>
@@ -6196,16 +6190,10 @@ export default function App() {
             </Pressable>
           </View>
 
-          <Text style={styles.settingsGroupLabel}>ABOUT</Text>
+          <Text style={styles.settingsGroupLabel}>PRIVACY</Text>
           <View style={styles.settingsGroup}>
-            <View style={styles.settingsRow}>
-              <Text style={styles.settingsRowTitle}>Price</Text>
-              <View style={styles.settingsRowTrailing}>
-                <Text style={styles.settingsRowValue}>Free · No subscription</Text>
-              </View>
-            </View>
             <View style={[styles.settingsRow, styles.settingsRowLast]}>
-              <Text style={styles.settingsRowTitle}>Privacy</Text>
+              <Text style={styles.settingsRowTitle}>Storage</Text>
               <View style={styles.settingsRowTrailing}>
                 <Text style={styles.settingsRowValue}>Your budgets stay on this device</Text>
               </View>
@@ -6822,7 +6810,7 @@ export default function App() {
             <View style={styles.importPanelCopy}>
               <Text style={styles.importPanelTitle}>Bring data back in</Text>
               <Text style={styles.importPanelText}>
-                Import a supported spreadsheet, CSV, or PDF file.
+                Restore a Budget Buddy backup or import a CSV ledger.
               </Text>
             </View>
             <Button variant="primary" size="large" onPress={importDataFile}>
@@ -6835,22 +6823,28 @@ export default function App() {
     </>
   );
 
-  const renderSimpleTransactionsScreen = () => !hasActiveBudget ? (
+  const renderSimpleTransactionsScreen = () => !hasActiveBudget && activeMonth.transactions.length === 0 ? (
     <View style={styles.noBudgetTransactionsPage}>
       <View style={styles.noBudgetTransactionsIcon}>
         <View style={styles.noBudgetReceiptLine} />
         <View style={[styles.noBudgetReceiptLine, styles.noBudgetReceiptLineShort]} />
         <View style={styles.noBudgetReceiptDot} />
       </View>
-      <Text style={styles.noBudgetTransactionsEyebrow}>TRANSACTIONS</Text>
-      <Text style={styles.noBudgetTransactionsTitle}>Plan first. Logging gets easier.</Text>
+      <Text style={styles.noBudgetTransactionsEyebrow}>ACTIVITY</Text>
+      <Text style={styles.noBudgetTransactionsTitle}>Start with an expense</Text>
       <Text style={styles.noBudgetTransactionsText}>
-        Create a few categories before adding expenses, so every purchase has a clear place from day one.
+        You can log spending now and add a monthly plan whenever you’re ready.
       </Text>
-      <Pressable style={styles.noBudgetTransactionsButton} onPress={openBudgetBuilder}>
+      <Pressable
+        style={styles.noBudgetTransactionsButton}
+        onPress={() => openExpenseCapture(undefined, 'spend')}
+      >
         <Text style={styles.noBudgetTransactionsButtonText}>
-          {monthlyLimitNumber > 0 ? 'Continue budget' : 'Create budget'}
+          Add first expense
         </Text>
+      </Pressable>
+      <Pressable onPress={openBudgetBuilder}>
+        <Text style={styles.noBudgetTransactionsCopy}>Set up a monthly plan</Text>
       </Pressable>
       {previousBudgetMonth ? (
         <Pressable onPress={copyPreviousBudgetIntoActiveMonth}>
@@ -6862,197 +6856,16 @@ export default function App() {
     </View>
   ) : (
     <>
-      <View style={styles.transactionHeroCard}>
-        {filteredTransactions.length > 0 && (
-          <>
-            <View style={styles.transactionHeroTotalSpend}>
-              <Text style={styles.transactionHeroTotalLabel}>Total Spend</Text>
-              <Text style={styles.transactionHeroTotalValue}>
-                {formatCurrency(filteredTransactionTotal)}
-              </Text>
-            </View>
-            <View style={styles.transactionHeroStatsGrid}>
-              <View style={styles.transactionHeroStatItem}>
-                <Text style={styles.transactionHeroStatLabel}>Income</Text>
-                <Text style={[styles.transactionHeroStatValue, { color: '#4ade80' }]}>
-                  {formatCurrency(filteredIncomeTotal)}
-                </Text>
-              </View>
-              <View style={styles.transactionHeroStatItem}>
-                <Text style={styles.transactionHeroStatLabel}>Entries</Text>
-                <Text style={styles.transactionHeroStatValue}>{filteredTransactions.length}</Text>
-              </View>
-              <View style={styles.transactionHeroStatItem}>
-                <Text style={styles.transactionHeroStatLabel}>Largest</Text>
-                <Text style={styles.transactionHeroStatValue}>{formatCurrency(transactionStats.largestExpense)}</Text>
-              </View>
-              <View style={styles.transactionHeroStatItem}>
-                <Text style={styles.transactionHeroStatLabel}>Daily Avg</Text>
-                <Text style={styles.transactionHeroStatValue}>{formatCurrency(transactionStats.averagePerDay)}</Text>
-              </View>
-            </View>
-          </>
-        )}
+      <View style={styles.activityListIntro}>
+        <Text style={styles.activityListTitle}>Recent activity</Text>
+        <Pressable
+          style={styles.activityAddButton}
+          onPress={() => openExpenseCapture(undefined, null)}
+          accessibilityRole="button"
+        >
+          <Text style={styles.activityAddButtonText}>＋ Add expense</Text>
+        </Pressable>
       </View>
-
-      {/* On Budget Badge */}
-      {isOnBudgetToday && (
-        <View style={styles.streakBadge}>
-          <Text style={styles.streakIcon}>✅</Text>
-          <View>
-            <Text style={styles.streakText}>On Budget!</Text>
-            <Text style={styles.streakSubtext}>Keep spending wisely</Text>
-          </View>
-        </View>
-      )}
-
-      {/* Achievements */}
-      {hasGreatSavings && (
-        <View style={styles.achievementsSection}>
-          <Text style={styles.achievementBadge}>💰 Great Savings!</Text>
-        </View>
-      )}
-
-      {/* Smart Alerts - Anomalies, Predictions, Recommendations */}
-      {(getAnomalies.length > 0 || getRecommendations.length > 0 || getSpendingInsights.length > 0) && (
-        <View style={styles.collapsibleSection}>
-          <Pressable
-            style={styles.collapsibleHeader}
-            onPress={() => setShowInsights(!showInsights)}
-          >
-            <Text style={styles.settingsGroupLabel}>
-              🧠 Smart Insights
-            </Text>
-            <Text style={styles.collapsibleToggle}>{showInsights ? '▼' : '▶'}</Text>
-          </Pressable>
-          {showInsights && (
-            <View style={styles.collapsibleContent}>
-              {/* Anomalies */}
-              {getAnomalies.map((anomaly, idx) => (
-                <Text key={`anom-${idx}`} style={styles.insightText}>{anomaly}</Text>
-              ))}
-              {/* Predictions */}
-              <Text style={styles.insightText}>
-                📈 At current pace: {formatCurrency(getProjectedSpendingInfo.projectedTotal)} by month end
-              </Text>
-              {/* Recommendations */}
-              {getRecommendations.map((rec, idx) => (
-                <Text key={`rec-${idx}`} style={styles.insightText}>{rec}</Text>
-              ))}
-              {/* Spending Insights */}
-              {getSpendingInsights.map((insight, idx) => (
-                <Text key={`ins-${idx}`} style={styles.insightText}>{insight}</Text>
-              ))}
-            </View>
-          )}
-        </View>
-      )}
-
-      {/* Budget Alerts */}
-      {budgetAlerts.length > 0 && showBudgetAlerts && (
-        <View style={styles.alertsBanner}>
-          {budgetAlerts.slice(0, 2).map((alert, idx) => (
-            <Text key={idx} style={styles.alertText}>⚠️ {alert}</Text>
-          ))}
-          {budgetAlerts.length > 2 && (
-            <Text style={styles.alertText}>+ {budgetAlerts.length - 2} more alerts</Text>
-          )}
-        </View>
-      )}
-
-      {/* Weekly Pace */}
-      {showWeeklyPace && dailyPace !== 0 && (
-        <View style={styles.paceCard}>
-          <Text style={styles.paceLabel}>Weekly Pace</Text>
-          <Text style={styles.paceValue}>
-            {dailyPace > 0 ? formatCurrency(dailyPace) : 'On budget'}
-          </Text>
-          <Text style={styles.paceText}>
-            {daysLeftInMonth} days left · {dailyPace > 0 ? `Spend ${formatCurrency(dailyPace)}/day` : 'Spending under limit'}
-          </Text>
-        </View>
-      )}
-
-      {/* Quick Category Buttons */}
-      {categorySummaries.length > 0 && (
-        <View style={styles.quickCategoriesSection}>
-          <Text style={styles.settingsGroupLabel}>Quick Add</Text>
-          <View style={styles.quickCategoriesGrid}>
-            {categorySummaries.slice(0, 4).map((summary) => (
-              <Pressable
-                key={summary.category.id}
-                style={styles.quickCategoryButton}
-                onPress={() => {
-                  setExpenseCategoryId(summary.category.id);
-                  openExpenseCapture(summary.category.id);
-                }}
-              >
-                <Text style={styles.quickCategoryIcon}>{getCategoryIcon(summary.category.name)}</Text>
-                <Text style={styles.quickCategoryName}>{summary.category.name}</Text>
-              </Pressable>
-            ))}
-          </View>
-        </View>
-      )}
-
-      {/* Recurring Transactions */}
-      {getRecurringTransactions.length > 0 && (
-        <View style={styles.collapsibleSection}>
-          <Pressable
-            style={styles.collapsibleHeader}
-            onPress={() => setShowRecurringList(!showRecurringList)}
-          >
-            <Text style={styles.settingsGroupLabel}>
-              Recurring ({getRecurringTransactions.length})
-            </Text>
-            <Text style={styles.collapsibleToggle}>{showRecurringList ? '▼' : '▶'}</Text>
-          </Pressable>
-          {showRecurringList && (
-            <View style={styles.collapsibleContent}>
-              {getRecurringTransactions.slice(0, 5).map((t) => (
-                <Text key={t.id} style={styles.recurringItem}>
-                  • {t.note || 'Income'} - {formatCurrency(t.amount)}
-                </Text>
-              ))}
-            </View>
-          )}
-        </View>
-      )}
-
-      {/* Monthly Summary */}
-      {getMonthlySummary && (
-        <View style={styles.collapsibleSection}>
-          <Pressable
-            style={styles.collapsibleHeader}
-            onPress={() => setShowMonthlySummary(!showMonthlySummary)}
-          >
-            <Text style={styles.settingsGroupLabel}>Month Summary</Text>
-            <Text style={styles.collapsibleToggle}>{showMonthlySummary ? '▼' : '▶'}</Text>
-          </Pressable>
-          {showMonthlySummary && (
-            <View style={styles.summaryGrid}>
-              <View style={styles.summaryItem}>
-                <Text style={styles.summaryLabel}>Spent</Text>
-                <Text style={styles.summaryValue}>{formatCurrency(getMonthlySummary.spent)}</Text>
-              </View>
-              <View style={styles.summaryItem}>
-                <Text style={styles.summaryLabel}>Income</Text>
-                <Text style={[styles.summaryValue, { color: '#4ade80' }]}>{formatCurrency(getMonthlySummary.income)}</Text>
-              </View>
-              <View style={styles.summaryItem}>
-                <Text style={styles.summaryLabel}>Planned</Text>
-                <Text style={styles.summaryValue}>{formatCurrency(getMonthlySummary.planned)}</Text>
-              </View>
-              <View style={styles.summaryItem}>
-                <Text style={styles.summaryLabel}>Remaining</Text>
-                <Text style={[styles.summaryValue, { color: getMonthlySummary.remaining > 0 ? '#4ade80' : '#ef4444' }]}>
-                  {formatCurrency(getMonthlySummary.remaining)}
-                </Text>
-              </View>
-            </View>
-          )}
-        </View>
-      )}
 
       {activeMonth.transactions.length > 0 && (
         <View style={styles.transactionFiltersPanel}>
@@ -10076,7 +9889,7 @@ export default function App() {
             >
               {renderExpenseForm()}
             </ScrollView>
-            {activeMonth.categories.length > 0 ? (
+            {expenseCategoryChoices.length > 0 ? (
               <View style={styles.expenseStickyFooter}>
                 {expenseContextCategoryId ? (
                   <View style={styles.expenseConfirmationBar}>
@@ -10883,7 +10696,7 @@ export default function App() {
           </AnimatedPressable>
         ))}
       </View>
-      <StatusBar style="dark" />
+      <StatusBar style={statusBarStyle} />
     </SafeAreaView>
   );
 }
@@ -10982,7 +10795,6 @@ const createStyles = (
       fontSize: isCompact ? 22 : 24,
       lineHeight: isCompact ? 26 : 30,
       fontWeight: '800',
-      fontFamily: Platform.select({ ios: 'Georgia', web: 'Georgia, serif' }),
       color: theme.text,
       marginBottom: 4,
       letterSpacing: -0.3,
@@ -12020,7 +11832,6 @@ const createStyles = (
       fontSize: 27,
       lineHeight: 32,
       fontWeight: '800',
-      fontFamily: Platform.select({ ios: 'Georgia', web: 'Georgia, serif' }),
       marginTop: 3,
     },
     homeStatusPill: {
@@ -12059,16 +11870,16 @@ const createStyles = (
       position: 'relative',
       overflow: 'hidden',
       backgroundColor: theme.surface,
-      borderRadius: 30,
+      borderRadius: 24,
       borderWidth: 1,
-      borderColor: theme.accentBorder,
+      borderColor: theme.divider,
       padding: isCompact ? 19 : 22,
       gap: 8,
       shadowColor: theme.shadow,
-      shadowOpacity: 0.09,
-      shadowRadius: 28,
-      shadowOffset: { width: 0, height: 14 },
-      elevation: 5,
+      shadowOpacity: 0.06,
+      shadowRadius: 16,
+      shadowOffset: { width: 0, height: 6 },
+      elevation: 2,
     },
     homeDecorativeGlow: {
       position: 'absolute',
@@ -12091,7 +11902,6 @@ const createStyles = (
       fontSize: isCompact ? 38 : 44,
       lineHeight: isCompact ? 42 : 48,
       fontWeight: '900',
-      fontFamily: Platform.select({ ios: 'Georgia', web: 'Georgia, serif' }),
       letterSpacing: -1.2,
     },
     homePulseSupport: {
@@ -12136,6 +11946,12 @@ const createStyles = (
       alignItems: 'center',
       justifyContent: 'center',
       paddingHorizontal: 13,
+    },
+    homePulsePrimaryAction: {
+      width: '100%',
+      minHeight: 50,
+      borderRadius: 16,
+      marginTop: 8,
     },
     homePulseCompactActionText: {
       color: theme.heroText,
@@ -12754,10 +12570,12 @@ const createStyles = (
       paddingBottom: 12,
     },
     planAmountPanel: {
-      backgroundColor: theme.accent,
+      backgroundColor: theme.surface,
       borderRadius: 24,
       padding: 18,
       gap: 12,
+      borderWidth: 1,
+      borderColor: theme.divider,
     },
     planAmountHeader: {
       flexDirection: 'row',
@@ -12766,8 +12584,7 @@ const createStyles = (
       gap: 16,
     },
     planAmountMonth: {
-      color: theme.heroText,
-      fontFamily: Platform.select({ ios: 'Georgia', web: 'Georgia, serif' }),
+      color: theme.text,
       fontSize: 22,
       fontWeight: '700',
       marginTop: 4,
@@ -12775,21 +12592,19 @@ const createStyles = (
     planAmountInputWrap: {
       minWidth: 112,
       borderBottomWidth: 1,
-      borderBottomColor: theme.accentBorder,
+      borderBottomColor: theme.divider,
       flexDirection: 'row',
       alignItems: 'baseline',
       justifyContent: 'flex-end',
       gap: 7,
     },
     planAmountCurrency: {
-      color: theme.heroText,
-      opacity: 0.6,
+      color: theme.textMuted,
       fontSize: 10,
       fontWeight: '800',
     },
     planAmountInput: {
-      color: theme.heroText,
-      fontFamily: Platform.select({ ios: 'Georgia', web: 'Georgia, serif' }),
+      color: theme.text,
       fontSize: 28,
       fontWeight: '700',
       textAlign: 'right',
@@ -12802,8 +12617,7 @@ const createStyles = (
       gap: 12,
     },
     planAmountMeta: {
-      color: theme.heroText,
-      opacity: 0.78,
+      color: theme.textMuted,
       fontSize: 12,
       fontWeight: '600',
     },
@@ -12812,6 +12626,21 @@ const createStyles = (
       alignItems: 'center',
       justifyContent: 'space-between',
       gap: 12,
+    },
+    planCategoryHeading: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 8,
+    },
+    planCategoryCount: {
+      color: theme.textMuted,
+      fontSize: 13,
+      fontWeight: '700',
+      backgroundColor: theme.surfaceTint,
+      overflow: 'hidden',
+      borderRadius: 999,
+      paddingHorizontal: 8,
+      paddingVertical: 3,
     },
     planListHeaderActions: {
       flexDirection: 'row',
@@ -13797,6 +13626,33 @@ const createStyles = (
       padding: 12,
       marginBottom: spacing.lg,
     },
+    activityListIntro: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      gap: 12,
+      marginBottom: 12,
+      marginTop: 2,
+    },
+    activityListTitle: {
+      color: theme.text,
+      fontSize: 19,
+      fontWeight: '700',
+      letterSpacing: -0.3,
+    },
+    activityAddButton: {
+      minHeight: 40,
+      alignItems: 'center',
+      justifyContent: 'center',
+      backgroundColor: theme.accent,
+      borderRadius: 14,
+      paddingHorizontal: 13,
+    },
+    activityAddButtonText: {
+      color: theme.heroText,
+      fontSize: 12,
+      fontWeight: '800',
+    },
     transactionHeroTotalSpend: {
       marginBottom: spacing.md,
       paddingBottom: spacing.md,
@@ -14102,7 +13958,7 @@ const createStyles = (
     },
     sheetBackdrop: {
       flex: 1,
-      backgroundColor: 'rgba(19, 16, 18, 0.18)',
+      backgroundColor: 'rgba(0, 0, 0, 0.48)',
       justifyContent: 'flex-end',
     },
     sheetDismissArea: {
@@ -14110,8 +13966,9 @@ const createStyles = (
     },
     sheetCard: {
       backgroundColor: theme.surface,
-      borderTopLeftRadius: 28,
-      borderTopRightRadius: 28,
+      borderRadius: 28,
+      marginHorizontal: 8,
+      marginBottom: 8,
       paddingHorizontal: 14,
       paddingTop: 10,
       paddingBottom: 18,
@@ -14513,19 +14370,15 @@ const createStyles = (
     bottomNav: {
       flexDirection: 'row',
       gap: 4,
-      padding: 6,
-      marginHorizontal: 12,
-      marginTop: 4,
-      marginBottom: 8,
-      backgroundColor: theme.surface,
-      borderRadius: 22,
-      borderWidth: 1,
+      paddingHorizontal: 8,
+      paddingTop: 7,
+      paddingBottom: 6,
+      marginHorizontal: 0,
+      marginTop: 0,
+      marginBottom: 0,
+      backgroundColor: theme.background,
+      borderTopWidth: StyleSheet.hairlineWidth,
       borderColor: theme.divider,
-      shadowColor: theme.shadow,
-      shadowOpacity: 0.14,
-      shadowRadius: 14,
-      shadowOffset: { width: 0, height: 5 },
-      elevation: 8,
     },
     quickAddFab: {
       position: 'absolute',
@@ -14555,17 +14408,17 @@ const createStyles = (
     quickAddBackdrop: {
       flex: 1,
       justifyContent: 'flex-end',
-      backgroundColor: 'rgba(18, 33, 29, 0.28)',
+      backgroundColor: 'rgba(0, 0, 0, 0.48)',
     },
     quickAddDismissArea: {
       ...StyleSheet.absoluteFill,
     },
     quickAddMenu: {
-      marginHorizontal: 18,
-      marginBottom: 90,
+      marginHorizontal: 14,
+      marginBottom: 86,
       backgroundColor: theme.surface,
-      borderRadius: 20,
-      padding: 10,
+      borderRadius: 24,
+      padding: 14,
       borderWidth: 1,
       borderColor: theme.divider,
       shadowColor: theme.shadow,
@@ -14588,8 +14441,8 @@ const createStyles = (
       alignItems: 'center',
       gap: 11,
       paddingHorizontal: 9,
-      paddingVertical: 9,
-      borderRadius: 14,
+      paddingVertical: 11,
+      borderRadius: 16,
     },
     quickAddOptionMark: {
       width: 34,
@@ -14636,7 +14489,7 @@ const createStyles = (
       gap: 3,
     },
     bottomNavItemActive: {
-      backgroundColor: theme.accentSoft,
+      backgroundColor: 'transparent',
     },
     navIconCanvas: {
       width: 22,
@@ -14742,7 +14595,7 @@ const createStyles = (
       justifyContent: 'center',
     },
     bottomNavIconWrapActive: {
-      backgroundColor: theme.surface,
+      backgroundColor: 'transparent',
     },
     bottomNavSetupDot: {
       position: 'absolute',
