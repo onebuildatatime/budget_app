@@ -25,6 +25,7 @@
     ],
     "ios": {
       "supportsTablet": false,
+      "deploymentTarget": "16.4",
       "bundleIdentifier": "com.rahulkumar.budgetbuddy",
       "buildNumber": "1",
       "infoPlist": {
@@ -55,7 +56,16 @@
       "@react-native-community/datetimepicker",
       "expo-document-picker",
       "expo-sharing",
-      "expo-font"
+      "expo-font",
+      "expo-status-bar",
+      [
+        "expo-build-properties",
+        {
+          "ios": {
+            "enableSceneSupport": true
+          }
+        }
+      ]
     ]
   }
 }

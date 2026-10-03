@@ -62,8 +62,8 @@ See the [UI and brand redesign record](./docs/UI_REDESIGN.md) and [architecture 
 
 Prerequisites:
 
-- Node.js 18+ and npm
-- Expo CLI (optional but recommended): `npm install -g expo-cli`
+- Node.js 22.13+ and npm
+- Xcode for native iOS simulator/device builds
 
 Install dependencies:
 
@@ -71,13 +71,19 @@ Install dependencies:
 npm install
 ```
 
-2. Start Expo:
+1. Build and install the native development app once (or after native dependency changes):
 
    ```bash
-   npm run start
+   npm run ios
    ```
 
-3. Open on iOS/Android simulator or the Expo Go app.
+2. Start Metro for the development client:
+
+   ```bash
+   npm run start -- --dev-client
+   ```
+
+3. Open the installed Budget Buddy development app. Expo Go is not used for this project.
 
 ## Type checking
 

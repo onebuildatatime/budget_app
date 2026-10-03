@@ -11432,7 +11432,7 @@ const createStyles = (
       fontSize: 16,
     },
     backgroundLayer: {
-      ...StyleSheet.absoluteFillObject,
+      ...StyleSheet.absoluteFill,
       overflow: 'hidden',
     },
     scroll: {
@@ -11733,13 +11733,13 @@ const createStyles = (
       position: 'relative',
     },
     heroOrbitTrack: {
-      ...StyleSheet.absoluteFillObject,
+      ...StyleSheet.absoluteFill,
       borderRadius: 999,
       borderWidth: isCompact ? 16 : 18,
       borderColor: theme.surfaceStrong,
     },
     heroOrbitMarkerWrap: {
-      ...StyleSheet.absoluteFillObject,
+      ...StyleSheet.absoluteFill,
       alignItems: 'center',
       justifyContent: 'flex-start',
       paddingTop: isCompact ? 4 : 6,
@@ -14537,7 +14537,7 @@ const createStyles = (
       padding: 20,
     },
     confirmDismissArea: {
-      ...StyleSheet.absoluteFillObject,
+      ...StyleSheet.absoluteFill,
     },
     confirmCard: {
       width: '100%',
@@ -15054,7 +15054,7 @@ const createStyles = (
       backgroundColor: 'rgba(18, 33, 29, 0.28)',
     },
     quickAddDismissArea: {
-      ...StyleSheet.absoluteFillObject,
+      ...StyleSheet.absoluteFill,
     },
     quickAddMenu: {
       marginHorizontal: 18,
