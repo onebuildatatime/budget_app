@@ -199,6 +199,8 @@ type AlertTone = 'good' | 'warning' | 'alert';
 type CategoryBucketMode = 'auto' | 'manual';
 type LocaleSheetMode = 'currency' | 'language';
 
+const FREE_LOCAL_RELEASE = true;
+
 type InsightMonthSummary = {
   id: string;
   label: string;
@@ -1192,6 +1194,7 @@ export default function App() {
   const [showAllBankAccounts, setShowAllBankAccounts] = useState(false);
   const [transactionFilter, setTransactionFilter] = useState<TransactionFilter>('all');
   const [transactionSort, setTransactionSort] = useState<TransactionSort>('recent');
+  const [showAdvancedFiltersModal, setShowAdvancedFiltersModal] = useState(false);
   const [insightWindow, setInsightWindow] = useState<InsightWindow>('quarter');
   const [insightSpendMode, setInsightSpendMode] = useState<InsightSpendMode>('all');
   const [aiReviewByMonthId, setAiReviewByMonthId] = useState<Record<string, MonthlyAiReview>>({});
@@ -1385,6 +1388,13 @@ export default function App() {
   useEffect(() => subscribeToPurchaseState(setPurchaseSnapshot), []);
 
   useEffect(() => {
+    if (FREE_LOCAL_RELEASE) {
+      setAuthUser(null);
+      setIsAuthReady(true);
+      setCloudState('local-only');
+      return;
+    }
+
     const unsubscribe = subscribeToBudgetAuth((nextUser) => {
       setAuthUser(nextUser);
       setIsAuthReady(true);
@@ -1841,6 +1851,7 @@ export default function App() {
 
   useEffect(() => {
     if (
+      FREE_LOCAL_RELEASE ||
       !hasLoadedPaywallDismissal ||
       isPaywallDismissed ||
       setupPaywallPromptShownRef.current ||
@@ -2349,8 +2360,12 @@ export default function App() {
     [categorySummaries],
   );
   const visibleBudgetCategorySummaries = categorySummaries;
-  const homePlanSummaries = categorySummaries.slice(0, 6);
+  const homePlanSummaries = categorySummaries.slice(0, 4);
   const hiddenHomePlanCategoryCount = Math.max(categorySummaries.length - homePlanSummaries.length, 0);
+  const homeRecentTransactions = useMemo(
+    () => sortTransactions(activeMonth.transactions, 'recent').slice(0, 3),
+    [activeMonth.transactions],
+  );
   const latestTransactionByCategoryId = useMemo(() => {
     const map = new Map<string, Transaction>();
 
@@ -2711,7 +2726,8 @@ export default function App() {
   const monthlyPremiumPackage =
     purchaseSnapshot.packages.find((option) => option.kind === 'monthly') ?? null;
   const cloudBackupEnabled = appState.preferences.cloudBackupEnabled;
-  const shouldUseCloudBackup = cloudBackupEnabled && isSignedIn && hasPremiumAccess;
+  const shouldUseCloudBackup =
+    !FREE_LOCAL_RELEASE && cloudBackupEnabled && isSignedIn && hasPremiumAccess;
   const premiumStatusLabel =
     purchaseState === 'loading'
       ? 'Checking plan'
@@ -6353,21 +6369,46 @@ export default function App() {
   const renderSimpleHomeScreen = () => {
     return (
       <View style={styles.homePulsePage}>
+        <View style={styles.homeBrandBar}>
+          <View style={styles.homeBrandIdentity}>
+            <View style={styles.homeBrandMark}>
+              <Text style={styles.homeBrandMarkText}>{activeMonthCurrencyMarker}</Text>
+            </View>
+            <View>
+              <Text style={styles.homeBrandName}>Budget Buddy</Text>
+              <Text style={styles.homeBrandCaption}>A calmer way to plan</Text>
+            </View>
+          </View>
+          <Pressable
+            onPress={() => openMoreSection('overview')}
+            style={styles.homeBrandAction}
+            accessibilityRole="button"
+            accessibilityLabel="Open settings"
+          >
+            <Text style={styles.homeBrandActionText}>•••</Text>
+          </Pressable>
+        </View>
+
         <View style={styles.homePulseTopRow}>
           <View>
-            <Text style={styles.settingsGroupLabel}>BUDGET PULSE</Text>
+            <Text style={styles.settingsGroupLabel}>MONTHLY OVERVIEW</Text>
             <Text style={styles.homePulseMonth}>{getMonthLabel(activeMonth.id, localeTag)}</Text>
           </View>
-          {hasActiveBudget ? (
-            <Pressable onPress={openPlanCategories} style={styles.homePlanLink}>
-              <Text style={styles.homePlanLinkText}>View plan</Text>
-            </Pressable>
-          ) : null}
+          <View style={styles.homeStatusPill}>
+            <View
+              style={[
+                styles.homeStatusDot,
+                { backgroundColor: remaining < 0 ? currentTheme.progressAlert : currentTheme.progressGood },
+              ]}
+            />
+            <Text style={styles.homeStatusText}>{remaining < 0 ? 'Needs care' : 'On track'}</Text>
+          </View>
         </View>
 
         {hasActiveBudget ? (
           <>
             <View style={styles.homePulseCard}>
+              <View style={styles.homeDecorativeGlow} />
               <Text style={styles.homePulseEyebrow}>
                 {remaining >= 0 ? 'LEFT THIS MONTH' : 'OVER BUDGET THIS MONTH'}
               </Text>
@@ -6387,7 +6428,7 @@ export default function App() {
                           ? currentTheme.progressAlert
                           : monthlyProgress >= 0.82
                             ? currentTheme.progressWarning
-                            : currentTheme.heroText,
+                            : currentTheme.progressGood,
                     },
                   ]}
                 />
@@ -6404,6 +6445,23 @@ export default function App() {
                 >
                   <Text style={styles.homePulseCompactActionText}>＋ Add expense</Text>
                 </Pressable>
+              </View>
+            </View>
+
+            <View style={styles.homeMetricRow}>
+              <View style={styles.homeMetricCard}>
+                <View style={[styles.homeMetricIcon, { backgroundColor: currentTheme.successSurface }]}>
+                  <Text style={[styles.homeMetricIconText, { color: currentTheme.successText }]}>↓</Text>
+                </View>
+                <Text style={styles.homeMetricLabel}>Spent so far</Text>
+                <Text style={styles.homeMetricValue}>{formatCompactCurrency(totalSpent)}</Text>
+              </View>
+              <View style={styles.homeMetricCard}>
+                <View style={[styles.homeMetricIcon, { backgroundColor: currentTheme.warningSurface }]}>
+                  <Text style={[styles.homeMetricIconText, { color: currentTheme.warningText }]}>◎</Text>
+                </View>
+                <Text style={styles.homeMetricLabel}>Plan used</Text>
+                <Text style={styles.homeMetricValue}>{Math.round(clamp(monthlyProgress) * 100)}%</Text>
               </View>
             </View>
 
@@ -6488,6 +6546,56 @@ export default function App() {
                 ) : null}
               </View>
             </View>
+
+            <View style={styles.homePlanSection}>
+              <View style={styles.homeSectionHeadingRow}>
+                <View>
+                  <Text style={styles.settingsGroupLabel}>RECENT ACTIVITY</Text>
+                  <Text style={styles.homeSectionTitle}>Latest entries</Text>
+                </View>
+                <Pressable onPress={() => navigateToScreen('spend')}>
+                  <Text style={styles.homePlanLinkText}>See all</Text>
+                </Pressable>
+              </View>
+              {homeRecentTransactions.length > 0 ? (
+                <View style={styles.homeRecentList}>
+                  {homeRecentTransactions.map((transaction) => {
+                    const category = categoryMap.get(transaction.categoryId);
+                    const categoryTheme = category
+                      ? categoryThemes[category.themeId]
+                      : categoryThemes[activeMonth.categories[0]?.themeId ?? 'citrus'];
+                    const isIncome = transaction.kind === 'income';
+                    return (
+                      <Pressable
+                        key={transaction.id}
+                        style={styles.homeRecentRow}
+                        onPress={() => navigateToScreen('spend')}
+                      >
+                        <View style={[styles.homeRecentIcon, { backgroundColor: categoryTheme.bubble }]}>
+                          <Text style={[styles.homeRecentIconText, { color: categoryTheme.bubbleText }]}>
+                            {isIncome ? '＋' : getCategoryIcon(category?.name ?? 'Other')}
+                          </Text>
+                        </View>
+                        <View style={styles.homeRecentCopy}>
+                          <Text style={styles.homeRecentTitle} numberOfLines={1}>
+                            {getTransactionDisplayTitle(transaction, category?.name ?? 'Other')}
+                          </Text>
+                          <Text style={styles.homeRecentMeta}>
+                            {category?.name ?? (isIncome ? 'Income' : 'Other')} ·{' '}
+                            {formatTransactionDate(transaction.happenedAt, localeTag)}
+                          </Text>
+                        </View>
+                        <Text style={[styles.homeRecentAmount, isIncome && styles.homeRecentIncome]}>
+                          {isIncome ? '+' : '−'}{formatCurrency(transaction.amount)}
+                        </Text>
+                      </Pressable>
+                    );
+                  })}
+                </View>
+              ) : (
+                <Text style={styles.homeQuietMessage}>Your latest expenses will settle in here.</Text>
+              )}
+            </View>
           </>
         ) : (
           <View style={styles.homeStartCard}>
@@ -6561,38 +6669,26 @@ export default function App() {
 
           <Text style={styles.settingsGroupLabel}>DATA</Text>
           <View style={styles.settingsGroup}>
-            <Pressable style={styles.settingsRow} onPress={() => activateSettingsSection('cloud')}>
-              <Text style={styles.settingsRowTitle}>Backup</Text>
-              <View style={styles.settingsRowTrailing}>
-                <Text style={styles.settingsRowValue}>{cloudBackupEnabled ? 'On' : 'Off'}</Text>
-                <Text style={styles.settingsChevron}>›</Text>
-              </View>
-            </Pressable>
             <Pressable style={[styles.settingsRow, styles.settingsRowLast]} onPress={() => activateSettingsSection('data')}>
               <Text style={styles.settingsRowTitle}>Import or export</Text>
               <Text style={styles.settingsChevron}>›</Text>
             </Pressable>
           </View>
 
-          <Text style={styles.settingsGroupLabel}>ACCOUNT</Text>
+          <Text style={styles.settingsGroupLabel}>ABOUT</Text>
           <View style={styles.settingsGroup}>
-            <Pressable style={styles.settingsRow} onPress={() => activateSettingsSection('cloud')}>
-              <Text style={styles.settingsRowTitle}>{isSignedIn ? 'Account' : 'Sign in'}</Text>
+            <View style={styles.settingsRow}>
+              <Text style={styles.settingsRowTitle}>Price</Text>
               <View style={styles.settingsRowTrailing}>
-                {isSignedIn ? <Text style={styles.settingsRowValue}>{authUser?.email}</Text> : null}
-                <Text style={styles.settingsChevron}>›</Text>
+                <Text style={styles.settingsRowValue}>Free · No subscription</Text>
               </View>
-            </Pressable>
-            <Pressable
-              style={[styles.settingsRow, styles.settingsRowLast]}
-              onPress={() => openPremiumPaywall('settings_upgrade')}
-            >
-              <Text style={styles.settingsRowTitle}>Budget Buddy Premium</Text>
+            </View>
+            <View style={[styles.settingsRow, styles.settingsRowLast]}>
+              <Text style={styles.settingsRowTitle}>Privacy</Text>
               <View style={styles.settingsRowTrailing}>
-                <Text style={styles.settingsRowValue}>{hasPremiumAccess ? 'Active' : 'Optional'}</Text>
-                <Text style={styles.settingsChevron}>›</Text>
+                <Text style={styles.settingsRowValue}>Your budgets stay on this device</Text>
               </View>
-            </Pressable>
+            </View>
           </View>
 
           <Text style={styles.settingsVersion}>Budget Buddy · Version 1.0.0</Text>
@@ -7150,7 +7246,7 @@ export default function App() {
           <Text style={[styles.sectionTitle, { fontSize: 12, textTransform: 'uppercase', marginBottom: spacing.lg }]}>Data Management</Text>
           <View style={styles.card}>
             <Text style={styles.sectionTitle}>Data tools</Text>
-          <Text style={styles.sectionSubtitle}>Import, export, and clean up what came in.</Text>
+          <Text style={styles.sectionSubtitle}>Move your budget data in or out whenever you need.</Text>
 
           <View style={styles.transferGrid}>
             {exportActions.map((action) => (
@@ -7205,108 +7301,13 @@ export default function App() {
             <View style={styles.importPanelCopy}>
               <Text style={styles.importPanelTitle}>Bring data back in</Text>
               <Text style={styles.importPanelText}>
-                Restore a backup or import spreadsheet and PDF data.
+                Import a supported spreadsheet, CSV, or PDF file.
               </Text>
             </View>
             <Button variant="primary" size="large" onPress={importDataFile}>
               Import file
             </Button>
           </View>
-
-          <View style={styles.formDivider} />
-
-          <View style={styles.sectionHeader}>
-            <View style={styles.sectionHeaderCopy}>
-              <View style={styles.premiumFeatureLabel}>
-                <Text style={styles.sectionTitle}>Smart tidy-up</Text>
-                {!hasPremiumAccess && <PremiumBadge accent={currentTheme.accent} accentText={currentTheme.heroText} />}
-              </View>
-              <Text style={styles.sectionSubtitle}>Spot duplicate lanes, naming drift, and repeat labels after imports.</Text>
-            </View>
-
-            <Pressable
-              style={[styles.tertiaryButton, importCleanupBusy && styles.buttonDisabled]}
-              onPress={generateAiImportCleanup}
-              disabled={hasPremiumAccess && importCleanupBusy}
-            >
-              <Text style={styles.tertiaryButtonText}>
-                {!hasPremiumAccess
-                  ? 'Unlock tidy-up'
-                  : importCleanupBusy
-                    ? 'Checking...'
-                    : importCleanupReview
-                      ? 'Refresh'
-                      : 'Check data'}
-              </Text>
-            </Pressable>
-          </View>
-
-          {!hasPremiumAccess ? (
-            <View style={styles.emptyStateCompact}>
-              <Text style={styles.emptyTitle}>Tidy-up preview</Text>
-              <Text style={styles.emptyText}>
-                Premium can scan naming drift, likely duplicates, and repeat labels after imports.
-              </Text>
-            </View>
-          ) : importCleanupReview ? (
-            <>
-              <View style={styles.aiReviewMetaRow}>
-                <View style={styles.deltaChip}>
-                  <Text style={styles.deltaChipText}>{importCleanupReview.model}</Text>
-                </View>
-              </View>
-
-              <View style={styles.aiReviewSummaryCard}>
-                <Text style={styles.reviewTitle}>{importCleanupReview.headline}</Text>
-                <Text style={styles.aiReviewSummaryText}>{importCleanupReview.summary}</Text>
-              </View>
-
-              <View style={styles.aiReviewWatchout}>
-                <Text style={styles.fieldLabel}>Watchout</Text>
-                <Text style={styles.suggestionText}>{importCleanupReview.watchout}</Text>
-              </View>
-
-              <View style={styles.aiReviewActionList}>
-                {importCleanupReview.actions.map((action, index) => (
-                  <View key={`${action}-${index}`} style={styles.aiReviewActionRow}>
-                    <View style={styles.aiReviewActionIndex}>
-                      <Text style={styles.suggestionBadgeText}>{index + 1}</Text>
-                    </View>
-                    <Text style={styles.aiReviewActionText}>{action}</Text>
-                  </View>
-                ))}
-              </View>
-
-              {importCleanupReview.mergeSuggestions.length > 0 ? (
-                <>
-                  <Text style={styles.fieldLabel}>Suggested merges</Text>
-                  <View style={styles.suggestionList}>
-                    {importCleanupReview.mergeSuggestions.map((suggestion) => (
-                      <View key={`${suggestion.from}-${suggestion.to}`} style={styles.suggestionCard}>
-                        <View style={styles.reviewCopy}>
-                          <Text style={styles.reviewTitle}>
-                            {`${suggestion.from} -> ${suggestion.to}`}
-                          </Text>
-                          <Text style={styles.suggestionText}>{suggestion.reason}</Text>
-                        </View>
-                      </View>
-                    ))}
-                  </View>
-                </>
-              ) : null}
-            </>
-          ) : (
-            <View style={styles.emptyStateCompact}>
-              <Text style={styles.emptyTitle}>No tidy-up yet</Text>
-              <Text style={styles.emptyText}>
-                Run one quick pass after imports or when categories start feeling messy.
-              </Text>
-            </View>
-          )}
-
-          {hasPremiumAccess && importCleanupError ? (
-            <Text style={styles.aiReviewErrorText}>{importCleanupError}</Text>
-          ) : null}
           </View>
         </View>
       ) : null}
@@ -7543,20 +7544,7 @@ export default function App() {
 
       {activeMonth.transactions.length > 0 && (
         <View style={styles.transactionFiltersPanel}>
-          <View style={styles.transactionFilterHeader}>
-            <Text style={styles.settingsGroupLabel}>FILTERS & SEARCH</Text>
-            <Pressable
-              onPress={() => {
-                animateUi();
-                setShowTransactionTools((current) => !current);
-              }}
-            >
-              <Text style={styles.transactionFilterToggle}>
-                {showTransactionTools || hasTransactionRefinements ? 'Hide' : 'Show'}
-              </Text>
-            </Pressable>
-          </View>
-
+          {/* Window Filter - Always Visible */}
           <View style={styles.filterGroup}>
             <Text style={styles.filterGroupLabel}>Window</Text>
             <View style={styles.filterRowCompact}>
@@ -7570,6 +7558,7 @@ export default function App() {
                   ]}
                   onPress={() => {
                     if (!activeMonthIsCurrent && scope !== 'month') return;
+                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
                     setActivityScope(scope);
                   }}
                 >
@@ -7581,65 +7570,123 @@ export default function App() {
             </View>
           </View>
 
-          {showTransactionTools || hasTransactionRefinements ? (
-            <>
-              <View style={styles.formShell}>
-                <View style={[styles.fieldCard, styles.fieldWide]}>
-                  <Text style={styles.fieldLabel}>Search</Text>
-                  <TextInput
-                    style={styles.fieldInput}
-                    value={searchQuery}
-                    onChangeText={setSearchQuery}
-                    placeholder="Search note or category"
-                    placeholderTextColor={currentTheme.placeholder}
-                    selectionColor={currentTheme.accent}
-                  />
-                </View>
-              </View>
-
-              <View style={styles.filterGroup}>
-                <Text style={styles.filterGroupLabel}>Status</Text>
-                <View style={styles.filterRowCompact}>
-                  {(['all', 'over', 'healthy'] as TransactionFilter[]).map((filter) => (
-                    <Pressable
-                      key={filter}
-                      style={[
-                        styles.filterChip,
-                        transactionFilter === filter && styles.filterChipActive,
-                      ]}
-                      onPress={() => setTransactionFilter(filter)}
-                    >
-                      <Text style={[styles.filterChipText, transactionFilter === filter && styles.filterChipTextActive]}>
-                        {filter.charAt(0).toUpperCase() + filter.slice(1)}
-                      </Text>
-                    </Pressable>
-                  ))}
-                </View>
-              </View>
-
-              <View style={styles.filterGroup}>
-                <Text style={styles.filterGroupLabel}>Sort</Text>
-                <View style={styles.filterRowCompact}>
-                  {(['recent', 'highest'] as TransactionSort[]).map((sort) => (
-                    <Pressable
-                      key={sort}
-                      style={[
-                        styles.filterChip,
-                        transactionSort === sort && styles.filterChipActive,
-                      ]}
-                      onPress={() => setTransactionSort(sort)}
-                    >
-                      <Text style={[styles.filterChipText, transactionSort === sort && styles.filterChipTextActive]}>
-                        {sort.charAt(0).toUpperCase() + sort.slice(1)}
-                      </Text>
-                    </Pressable>
-                  ))}
-                </View>
-              </View>
-            </>
-          ) : null}
+          {/* Search & Filter Header */}
+          <View style={styles.transactionSearchRow}>
+            <View style={styles.transactionSearchField}>
+              <TextInput
+                style={styles.transactionSearchInput}
+                value={searchQuery}
+                onChangeText={setSearchQuery}
+                placeholder="Search"
+                placeholderTextColor={currentTheme.placeholder}
+                selectionColor={currentTheme.accent}
+              />
+            </View>
+            <Pressable
+              style={styles.transactionFilterButton}
+              onPress={() => {
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                setShowAdvancedFiltersModal(true);
+              }}
+            >
+              <Text style={styles.transactionFilterButtonText}>⚙️</Text>
+            </Pressable>
+          </View>
         </View>
       )}
+
+      {/* Advanced Filters Modal */}
+      <Modal
+        visible={showAdvancedFiltersModal}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setShowAdvancedFiltersModal(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalContent, { backgroundColor: currentTheme.background }]}>
+            {/* Modal Header */}
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Advanced Filters</Text>
+              <Pressable
+                onPress={() => setShowAdvancedFiltersModal(false)}
+                style={styles.modalCloseButton}
+              >
+                <Text style={styles.modalCloseButtonText}>✕</Text>
+              </Pressable>
+            </View>
+
+            {/* Status Filter */}
+            <View style={styles.filterGroup}>
+              <Text style={styles.filterGroupLabel}>Status</Text>
+              <View style={styles.filterRowCompact}>
+                {(['all', 'over', 'healthy'] as TransactionFilter[]).map((filter) => (
+                  <Pressable
+                    key={filter}
+                    style={[
+                      styles.filterChip,
+                      transactionFilter === filter && styles.filterChipActive,
+                    ]}
+                    onPress={() => {
+                      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                      setTransactionFilter(filter);
+                    }}
+                  >
+                    <Text style={[styles.filterChipText, transactionFilter === filter && styles.filterChipTextActive]}>
+                      {filter.charAt(0).toUpperCase() + filter.slice(1)}
+                    </Text>
+                  </Pressable>
+                ))}
+              </View>
+            </View>
+
+            {/* Sort Filter */}
+            <View style={styles.filterGroup}>
+              <Text style={styles.filterGroupLabel}>Sort</Text>
+              <View style={styles.filterRowCompact}>
+                {(['recent', 'highest'] as TransactionSort[]).map((sort) => (
+                  <Pressable
+                    key={sort}
+                    style={[
+                      styles.filterChip,
+                      transactionSort === sort && styles.filterChipActive,
+                    ]}
+                    onPress={() => {
+                      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                      setTransactionSort(sort);
+                    }}
+                  >
+                    <Text style={[styles.filterChipText, transactionSort === sort && styles.filterChipTextActive]}>
+                      {sort.charAt(0).toUpperCase() + sort.slice(1)}
+                    </Text>
+                  </Pressable>
+                ))}
+              </View>
+            </View>
+
+            {/* Category Filter */}
+            {categoriesForFilter.length > 0 && (
+              <View style={{ marginBottom: 20 }}>
+                <CategoryFilter
+                  categories={categoriesForFilter}
+                  selectedCategories={selectedCategories}
+                  onCategoryToggle={handleCategoryToggle}
+                />
+              </View>
+            )}
+
+            {/* Close Button */}
+            <Pressable
+              style={styles.modalDoneButton}
+              onPress={() => {
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                setShowAdvancedFiltersModal(false);
+              }}
+            >
+              <Text style={styles.modalDoneButtonText}>Done</Text>
+            </Pressable>
+          </View>
+        </View>
+      </Modal>
 
       {filteredTransactions.length > 0 && categoriesForFilter.length > 0 && (
         <View style={styles.spendingByCategorySection}>
@@ -10244,7 +10291,7 @@ export default function App() {
               </View>
             </View>
 
-            <View style={styles.card}>
+            {false ? <View style={styles.card}>
               <View style={styles.sectionHeader}>
                 <View style={styles.sectionHeaderCopy}>
                   <View style={styles.premiumFeatureLabel}>
@@ -10318,13 +10365,12 @@ export default function App() {
               {hasPremiumAccess && activeAiReviewError ? (
                 <Text style={styles.aiReviewErrorText}>{activeAiReviewError}</Text>
               ) : null}
-            </View>
+            </View> : null}
           </>
         ) : null}
 
         {activeScreen === 'settings' ? renderSettingsScreen() : null}
       </ScrollView>
-      {renderPremiumPaywall()}
       {showConfetti && (
         <ConfettiCannon
           count={200}
@@ -11341,8 +11387,40 @@ export default function App() {
 const createStyles = (
   theme: AppTheme,
   { isCompact, isNarrow }: { isCompact: boolean; isNarrow: boolean },
-) =>
-  StyleSheet.create({
+) => {
+  // Premium shadow system for depth and layering
+  const createShadow = (
+    opacity: number,
+    radius: number,
+    offset: number,
+    elevation: number,
+  ) => ({
+    shadowColor: theme.shadow,
+    shadowOpacity: opacity,
+    shadowRadius: radius,
+    shadowOffset: { width: 0, height: offset },
+    elevation: elevation,
+  });
+
+  const shadows = {
+    none: createShadow(0, 0, 0, 0),
+    sm: createShadow(0.04, 6, 2, 2), // Subtle depth for interactive items
+    md: createShadow(0.08, 12, 4, 4), // Medium depth
+    lg: createShadow(0.12, 24, 8, 6), // Card depth (hero cards)
+    xl: createShadow(0.15, 36, 12, 8), // Modal depth
+  };
+
+  // Consistent border radius system
+  const radii = {
+    xs: 6,
+    sm: 8,
+    md: 12,
+    lg: 16,
+    xl: 24,
+    full: 999,
+  };
+
+  return StyleSheet.create({
     safe: {
       flex: 1,
       backgroundColor: theme.background,
@@ -11397,12 +11475,13 @@ const createStyles = (
       paddingBottom: 10,
     },
     screenHeaderTitle: {
-      fontSize: isCompact ? 20 : 22,
-      lineHeight: isCompact ? 24 : 27,
+      fontSize: isCompact ? 22 : 24,
+      lineHeight: isCompact ? 26 : 30,
       fontWeight: '800',
       fontFamily: Platform.select({ ios: 'Georgia', web: 'Georgia, serif' }),
       color: theme.text,
       marginBottom: 4,
+      letterSpacing: -0.3,
     },
     screenHeaderSubtitle: {
       fontSize: 10,
@@ -11411,17 +11490,13 @@ const createStyles = (
       maxWidth: 280,
     },
     heroCard: {
+      ...shadows.lg,
       backgroundColor: theme.surface,
-      borderRadius: 24,
+      borderRadius: radii.xl,
       padding: isCompact ? 16 : 20,
       marginBottom: 18,
       borderWidth: 1,
       borderColor: theme.divider,
-      shadowColor: theme.heroShadow,
-      shadowOpacity: 0.08,
-      shadowRadius: 18,
-      shadowOffset: { width: 0, height: 8 },
-      elevation: 3,
       overflow: 'hidden',
     },
     budgetStage: {
@@ -11441,7 +11516,7 @@ const createStyles = (
     },
     monthChip: {
       backgroundColor: theme.heroChip,
-      borderRadius: 999,
+      borderRadius: radii.full,
       paddingHorizontal: 11,
       paddingVertical: 6,
     },
@@ -11453,7 +11528,7 @@ const createStyles = (
       letterSpacing: 1,
     },
     statusPill: {
-      borderRadius: 999,
+      borderRadius: radii.full,
       paddingHorizontal: 11,
       paddingVertical: 6,
     },
@@ -12372,8 +12447,63 @@ const createStyles = (
       marginTop: 10,
     },
     homePulsePage: {
-      gap: 12,
-      paddingBottom: 12,
+      gap: 18,
+      paddingBottom: 18,
+    },
+    homeBrandBar: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      paddingHorizontal: 2,
+      paddingBottom: 3,
+    },
+    homeBrandIdentity: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 11,
+    },
+    homeBrandMark: {
+      width: 38,
+      height: 38,
+      borderRadius: 13,
+      alignItems: 'center',
+      justifyContent: 'center',
+      backgroundColor: theme.accent,
+      borderWidth: 1,
+      borderColor: theme.accentBorder,
+      ...shadows.sm,
+    },
+    homeBrandMarkText: {
+      color: theme.heroText,
+      fontSize: 16,
+      fontWeight: '900',
+    },
+    homeBrandName: {
+      color: theme.text,
+      fontSize: 15,
+      fontWeight: '800',
+      letterSpacing: -0.2,
+    },
+    homeBrandCaption: {
+      color: theme.textMuted,
+      fontSize: 10,
+      marginTop: 2,
+    },
+    homeBrandAction: {
+      width: 38,
+      height: 38,
+      borderRadius: 13,
+      alignItems: 'center',
+      justifyContent: 'center',
+      backgroundColor: theme.surface,
+      borderWidth: 1,
+      borderColor: theme.divider,
+    },
+    homeBrandActionText: {
+      color: theme.textMuted,
+      fontSize: 15,
+      fontWeight: '800',
+      letterSpacing: 1,
     },
     homePulseTopRow: {
       flexDirection: 'row',
@@ -12383,11 +12513,32 @@ const createStyles = (
     },
     homePulseMonth: {
       color: theme.text,
-      fontSize: 24,
-      lineHeight: 29,
+      fontSize: 27,
+      lineHeight: 32,
       fontWeight: '800',
       fontFamily: Platform.select({ ios: 'Georgia', web: 'Georgia, serif' }),
       marginTop: 3,
+    },
+    homeStatusPill: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 7,
+      backgroundColor: theme.surface,
+      borderRadius: 999,
+      paddingHorizontal: 11,
+      paddingVertical: 8,
+      borderWidth: 1,
+      borderColor: theme.divider,
+    },
+    homeStatusDot: {
+      width: 7,
+      height: 7,
+      borderRadius: 4,
+    },
+    homeStatusText: {
+      color: theme.textMuted,
+      fontSize: 11,
+      fontWeight: '700',
     },
     homePlanLink: {
       backgroundColor: theme.surfaceTint,
@@ -12401,25 +12552,38 @@ const createStyles = (
       fontWeight: '800',
     },
     homePulseCard: {
-      backgroundColor: theme.accent,
-      borderRadius: 22,
-      padding: isCompact ? 15 : 18,
-      gap: 7,
+      position: 'relative',
+      overflow: 'hidden',
+      backgroundColor: theme.surface,
+      borderRadius: 30,
+      borderWidth: 1,
+      borderColor: theme.accentBorder,
+      padding: isCompact ? 19 : 22,
+      gap: 8,
       shadowColor: theme.shadow,
-      shadowOpacity: 0.14,
-      shadowRadius: 18,
-      shadowOffset: { width: 0, height: 8 },
-      elevation: 4,
+      shadowOpacity: 0.09,
+      shadowRadius: 28,
+      shadowOffset: { width: 0, height: 14 },
+      elevation: 5,
+    },
+    homeDecorativeGlow: {
+      position: 'absolute',
+      width: 180,
+      height: 180,
+      borderRadius: 90,
+      right: -72,
+      top: -92,
+      backgroundColor: theme.orbPrimary,
+      opacity: 0.9,
     },
     homePulseEyebrow: {
-      color: theme.heroText,
-      opacity: 0.68,
+      color: theme.accentText,
       fontSize: 10,
       fontWeight: '800',
       letterSpacing: 1.2,
     },
     homePulseAmount: {
-      color: theme.heroText,
+      color: theme.text,
       fontSize: isCompact ? 38 : 44,
       lineHeight: isCompact ? 42 : 48,
       fontWeight: '900',
@@ -12427,15 +12591,14 @@ const createStyles = (
       letterSpacing: -1.2,
     },
     homePulseSupport: {
-      color: theme.heroText,
-      opacity: 0.78,
+      color: theme.textMuted,
       fontSize: 13,
       lineHeight: 18,
     },
     homePulseTrack: {
       height: 7,
       borderRadius: 999,
-      backgroundColor: 'rgba(255,255,255,0.2)',
+      backgroundColor: theme.progressTrack,
       overflow: 'hidden',
       marginTop: 5,
     },
@@ -12451,30 +12614,67 @@ const createStyles = (
       marginTop: 4,
     },
     homePulseStatLabel: {
-      color: theme.heroText,
-      opacity: 0.55,
+      color: theme.textSoft,
       fontSize: 9,
       fontWeight: '800',
       letterSpacing: 0.8,
       marginBottom: 3,
     },
     homePulseStatValue: {
-      color: theme.heroText,
+      color: theme.text,
       fontSize: 13,
       fontWeight: '700',
     },
     homePulseCompactAction: {
-      backgroundColor: theme.heroText,
-      borderRadius: 13,
-      minHeight: 38,
+      backgroundColor: theme.accent,
+      borderRadius: 15,
+      minHeight: 42,
       alignItems: 'center',
       justifyContent: 'center',
       paddingHorizontal: 13,
     },
     homePulseCompactActionText: {
-      color: theme.accent,
+      color: theme.heroText,
       fontSize: 12,
       fontWeight: '800',
+    },
+    homeMetricRow: {
+      flexDirection: 'row',
+      gap: 10,
+    },
+    homeMetricCard: {
+      flex: 1,
+      minWidth: 0,
+      backgroundColor: theme.surface,
+      borderRadius: 20,
+      borderWidth: 1,
+      borderColor: theme.divider,
+      padding: 14,
+      gap: 5,
+      ...shadows.sm,
+    },
+    homeMetricIcon: {
+      width: 28,
+      height: 28,
+      borderRadius: 10,
+      alignItems: 'center',
+      justifyContent: 'center',
+      marginBottom: 4,
+    },
+    homeMetricIconText: {
+      fontSize: 14,
+      fontWeight: '900',
+    },
+    homeMetricLabel: {
+      color: theme.textMuted,
+      fontSize: 10,
+      fontWeight: '700',
+    },
+    homeMetricValue: {
+      color: theme.text,
+      fontSize: 19,
+      fontWeight: '800',
+      fontFamily: Platform.select({ ios: 'Georgia', web: 'Georgia, serif' }),
     },
     homePulseAction: {
       backgroundColor: theme.heroText,
@@ -12583,7 +12783,7 @@ const createStyles = (
     },
     homeRecentList: {
       backgroundColor: theme.surface,
-      borderRadius: 18,
+      borderRadius: 22,
       borderWidth: 1,
       borderColor: theme.divider,
       overflow: 'hidden',
@@ -12593,10 +12793,21 @@ const createStyles = (
       alignItems: 'center',
       justifyContent: 'space-between',
       gap: 12,
-      paddingHorizontal: 15,
-      paddingVertical: 13,
+      paddingHorizontal: 14,
+      paddingVertical: 12,
       borderBottomWidth: StyleSheet.hairlineWidth,
       borderBottomColor: theme.divider,
+    },
+    homeRecentIcon: {
+      width: 36,
+      height: 36,
+      borderRadius: 12,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    homeRecentIconText: {
+      fontSize: 14,
+      fontWeight: '900',
     },
     homeRecentCopy: {
       flex: 1,
@@ -12617,21 +12828,24 @@ const createStyles = (
       fontSize: 14,
       fontWeight: '800',
     },
+    homeRecentIncome: {
+      color: theme.successText,
+    },
     homePlanSection: {
-      gap: 8,
+      gap: 11,
     },
     homePlanList: {
       backgroundColor: theme.surface,
-      borderRadius: 16,
+      borderRadius: 22,
       borderWidth: 1,
       borderColor: theme.divider,
       overflow: 'hidden',
     },
     homePlanRow: {
-      minHeight: 54,
-      gap: 7,
-      paddingHorizontal: 12,
-      paddingVertical: 9,
+      minHeight: 60,
+      gap: 8,
+      paddingHorizontal: 14,
+      paddingVertical: 11,
       borderBottomWidth: StyleSheet.hairlineWidth,
       borderBottomColor: theme.divider,
     },
@@ -16286,6 +16500,102 @@ const createStyles = (
     filterChipTextActive: {
       color: theme.heroText,
     },
+    transactionSearchRow: {
+      flexDirection: 'row',
+      gap: 10,
+      alignItems: 'center',
+      marginBottom: 12,
+    },
+    transactionSearchField: {
+      flex: 1,
+      backgroundColor: theme.surface,
+      borderRadius: 12,
+      borderWidth: 1,
+      borderColor: theme.divider,
+      paddingHorizontal: 12,
+      paddingVertical: 10,
+      shadowColor: theme.shadow,
+      shadowOpacity: 0.04,
+      shadowRadius: 6,
+      shadowOffset: { width: 0, height: 2 },
+      elevation: 2,
+    },
+    transactionSearchInput: {
+      color: theme.text,
+      fontSize: 15,
+      fontWeight: '500',
+      padding: 0,
+    },
+    transactionFilterButton: {
+      width: 44,
+      height: 44,
+      borderRadius: 12,
+      backgroundColor: theme.accent,
+      alignItems: 'center',
+      justifyContent: 'center',
+      shadowColor: theme.shadow,
+      shadowOpacity: 0.08,
+      shadowRadius: 12,
+      shadowOffset: { width: 0, height: 4 },
+      elevation: 4,
+    },
+    transactionFilterButtonText: {
+      fontSize: 18,
+      fontWeight: '600',
+    },
+    modalOverlay: {
+      flex: 1,
+      backgroundColor: 'rgba(0,0,0,0.5)',
+      justifyContent: 'flex-end',
+    },
+    modalContent: {
+      borderTopLeftRadius: 24,
+      borderTopRightRadius: 24,
+      paddingTop: 20,
+      paddingHorizontal: 18,
+      paddingBottom: 40,
+      maxHeight: '85%',
+    },
+    modalHeader: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      marginBottom: 24,
+    },
+    modalTitle: {
+      fontSize: 20,
+      fontWeight: '800',
+      color: theme.text,
+      fontFamily: Platform.select({ ios: 'Georgia', web: 'Georgia, serif' }),
+    },
+    modalCloseButton: {
+      width: 40,
+      height: 40,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    modalCloseButtonText: {
+      fontSize: 24,
+      color: theme.textMuted,
+      fontWeight: '600',
+    },
+    modalDoneButton: {
+      backgroundColor: theme.accent,
+      borderRadius: 12,
+      paddingVertical: 14,
+      alignItems: 'center',
+      marginTop: 24,
+      shadowColor: theme.shadow,
+      shadowOpacity: 0.12,
+      shadowRadius: 24,
+      shadowOffset: { width: 0, height: 8 },
+      elevation: 6,
+    },
+    modalDoneButtonText: {
+      color: theme.heroText,
+      fontSize: 16,
+      fontWeight: '700',
+    },
     transactionSummaryRow: {
       flexDirection: 'row',
       justifyContent: 'space-between',
@@ -17326,3 +17636,4 @@ const createStyles = (
       fontWeight: '700',
     },
   });
+};

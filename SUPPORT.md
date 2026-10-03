@@ -1,57 +1,43 @@
 # Budget Buddy Support
 
+Budget Buddy is a free, local-first budget planner. It does not require an account or subscription.
+
 ## Common help
 
-- `My budget is gone after reinstall`
-  - Reinstall recovery only works when recovery backup was enabled and tied to a signed-in Premium account.
-- `Monthly check-in is locked`
-  - Smart check-ins are part of Budget Buddy Premium.
-- `My purchase did not unlock`
-  - Open `Settings > Account` and use `Restore purchases`.
-- `Backup will not turn on`
-  - Recovery backup needs both Premium and a signed-in account.
+### Where is my data stored?
 
-## Recommended troubleshooting
+Your budgets, categories, transactions, account labels, and preferences are stored on your device. Budget Buddy does not upload them to a cloud account.
 
-1. Confirm you are on the same App Store account used to purchase Premium.
-2. Open `Settings > Account`.
-3. Tap `Restore purchases`.
-4. If backup still does not work, sign in again and retry.
+### How do I keep a backup?
 
-## Contact us
+Open **Settings → Import or export** and export a file before replacing your phone, reinstalling the app, or deleting data. Because storage is local, uninstalling the app can remove data that was not exported.
 
-**Email:** namrah.be@gmail.com
+### Can I import existing data?
 
-We typically respond within 24-48 hours during business days.
+Yes. Open **Settings → Import or export → Import file**. The app supports its own exports and supported spreadsheet, CSV, and PDF formats.
 
-**What to include in your support email:**
-- Your app account email (if signed in)
-- iOS version and iPhone model
-- What you were trying to do when the issue happened
-- Screenshots if helpful
+### Is the app free?
 
-## FAQ
+Yes. Version 1.0 has no advertisements, subscriptions, or in-app purchases.
 
-**Q: Is my data safe offline?**
-A: Yes! All budget data stays on your device by default. No internet connection needed for core features.
+## Troubleshooting
 
-**Q: How do I recover my budget after reinstalling?**
-A: Only if you enabled backup before uninstalling. Go to Settings > Account and sign in with the same email. Tap "Restore purchases" to recover your data.
+If the app does not behave as expected:
 
-**Q: Do I need Premium for core features?**
-A: No! Create budgets, track expenses, and manage categories for free. Premium unlocks monthly check-ins and cloud backup.
+1. Close and reopen Budget Buddy.
+2. Confirm that iOS is up to date.
+3. If the issue continues, note the action that caused it and take a screenshot if helpful.
+4. Email us with the device model and iOS version.
 
-**Q: Can I export my data?**
-A: Yes! Go to Settings > Data and export as CSV, Excel, or PDF anytime. This works whether you have Premium or not.
+## Contact
 
-**Q: How do I cancel my Premium subscription?**
-A: Cancel in the Apple Settings app under Subscriptions, not in Budget Buddy. You'll keep Premium until your current period ends.
+Email: **namrah.be@gmail.com**
 
-## Report a bug
+We typically respond within 24–48 hours on business days.
 
-If you find a bug or crash:
-1. Note what you were doing when it happened
-2. Email us with "BUG REPORT" in the subject line
-3. Include your device and iOS version
+For bug reports, include:
 
-We'll investigate and fix it as soon as possible.
+- iPhone model and iOS version
+- What you were trying to do
+- What happened instead
+- Screenshots, if they do not contain sensitive financial information

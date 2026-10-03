@@ -14,55 +14,27 @@
 
 ## Store listing draft
 
-- Subtitle: `Local-first budgets with smarter monthly reviews`
-- Promotional text: `Plan the month clearly, track flexible spend, and recover your budget when you need it.`
-- Keywords: `budget,budgeting,expense tracker,monthly planner,savings,finance,spending,subscriptions`
+- Subtitle: `A calmer monthly budget`
+- Promotional text: `Plan your month, track everyday spending, and understand what is left—all without an account or subscription.`
+- Keywords: `budget,budgeting,expense tracker,monthly planner,savings,finance,spending,money`
 
 ## Description draft
 
 Budget Buddy keeps budgeting simple: set a monthly amount, build categories that match real life, and track what is left without turning the app into a spreadsheet.
 
-The core app stays free and local-first. You can create budgets, add categories and subcategories, log expenses, manage bank-account tags, import/export data, and review your month without creating an account.
+Budget Buddy is free and local-first. You can create monthly budgets, add categories and subcategories, log expenses and income, tag bank accounts, review spending patterns, and import or export your data without creating an account.
 
-Budget Buddy Premium unlocks:
+Your budget stays on your device. There are no advertisements, subscriptions, or in-app purchases.
 
-- Monthly check-ins that separate fixed recurring costs from adjustable spend
-- Smart expense suggestions for category, bank account, and repeat flag
-- Smart tidy-up for imported budgets
-- Starter-plan suggestions from your prior months
-- Optional recovery backup after reinstall
-
-## Subscription setup
-
-- Subscription group: `Premium`
-- Entitlement: `premium`
-- Products:
-  - `premium_monthly`
-  - `premium_yearly`
-- RevenueCat offering:
-  - current/default offering should contain the monthly and yearly packages above
-
-## RevenueCat and App Store Connect checklist
+## App Store Connect checklist
 
 1. Register the Apple Developer App ID with bundle ID `com.rahulkumar.budgetbuddy`.
 2. Enable Push Notifications only if the app adds push messaging later.
 3. Create the app in App Store Connect with name `Budget Buddy`, bundle ID `com.rahulkumar.budgetbuddy`, and SKU `com.rahulkumar.budgetbuddy`.
-4. Add the app as `Free`.
-5. Create the `Premium` subscription group.
-6. Create `premium_monthly` and `premium_yearly`.
-7. Add the matching products to RevenueCat.
-8. Create the `premium` entitlement in RevenueCat.
-9. Attach the monthly and yearly products to the current offering.
-10. Add the public iOS SDK key to local env and EAS env as `EXPO_PUBLIC_REVENUECAT_IOS_API_KEY`.
-11. Point App Store Connect support/privacy URLs to hosted versions of [SUPPORT.md](./SUPPORT.md) and [PRIVACY.md](./PRIVACY.md).
-12. Upload final icon, screenshots, and promotional art before submission.
-
-## Subscription testing
-
-1. Copy [.env.example](./.env.example) to `.env` and set `EXPO_PUBLIC_REVENUECAT_IOS_API_KEY` to the RevenueCat iOS public SDK key for bundle ID `com.rahulkumar.budgetbuddy`.
-2. Restart Expo with `npx expo start --clear`.
-3. Test purchases in an iOS development build or TestFlight build. Expo Go cannot complete native in-app purchases.
-4. Confirm RevenueCat has a current offering with packages mapped to `premium_monthly` and `premium_yearly`.
+4. Set the app price to `Free` and leave in-app purchases empty.
+5. Point App Store Connect support/privacy URLs to hosted versions of [SUPPORT.md](./SUPPORT.md) and [PRIVACY.md](./PRIVACY.md).
+6. Complete the App Privacy questionnaire using the local-only data handling described in the privacy policy.
+7. Upload final iPhone screenshots, the 1024×1024 icon, and review notes before submission.
 
 ## Build and submit commands
 

@@ -3,7 +3,7 @@
     "name": "Budget Buddy",
     "slug": "budget-buddy",
     "owner": "rahul0083.be",
-    "description": "Local-first budget planning with smart monthly reviews and recoverable backup.",
+    "description": "A calm, local-first monthly budget and expense tracker.",
     "version": "1.0.0",
     "scheme": "budgetbuddy",
     "orientation": "portrait",
@@ -12,7 +12,7 @@
     "splash": {
       "image": "./assets/splash.png",
       "resizeMode": "contain",
-      "backgroundColor": "#F6F1EA"
+      "backgroundColor": "#FAF5EF"
     },
     "runtimeVersion": {
       "policy": "appVersion"
@@ -29,25 +29,15 @@
       "buildNumber": "1",
       "infoPlist": {
         "LSApplicationCategoryType": "public.app-category.finance",
-        "ITSAppUsesNonExemptEncryption": false,
-        "NSLocalNetworkUsageDescription": "Budget Buddy does not require local network access",
-        "NSBonjourServiceTypes": []
-      },
-      "entitlements": {
-        "aps-environment": "production",
-        "com.apple.developer.in-app-payments": true
+        "ITSAppUsesNonExemptEncryption": false
       }
     },
     "android": {
       "package": "com.rahulkumar.budgetbuddy",
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-foreground-v3.png",
-        "backgroundColor": "#F6F1EA"
+        "backgroundColor": "#FAF5EF"
       }
-    },
-    "notification": {
-      "icon": "./assets/notification-icon.png",
-      "color": "#23443B"
     },
     "web": {
       "favicon": "./assets/favicon.png"

@@ -1,5 +1,6 @@
 import { memo, useRef } from 'react';
 import { Animated, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
+import * as Haptics from 'expo-haptics';
 
 type Palette = {
   surface: string;
@@ -120,6 +121,7 @@ export const BudgetCategoryRow = memo(function BudgetCategoryRow({
               onPressOut={handlePressOut}
               onPress={(event) => {
                 event.stopPropagation();
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
                 onAdd();
               }}
             >
@@ -165,6 +167,7 @@ export const BudgetCategoryRow = memo(function BudgetCategoryRow({
                 {
                   backgroundColor:
                     statusTone === 'warning' ? palette.warningSurface : palette.alertSurface,
+                  borderColor: statusTone === 'warning' ? palette.warningText + '40' : palette.alertText + '40',
                 },
               ]}
             >
@@ -206,6 +209,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 12,
     gap: 9,
+    shadowColor: '#000',
+    shadowOpacity: 0.04,
+    shadowRadius: 6,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 2,
   },
   header: {
     flexDirection: 'row',
@@ -226,6 +234,11 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     alignItems: 'center',
     justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOpacity: 0.02,
+    shadowRadius: 4,
+    shadowOffset: { width: 0, height: 1 },
+    elevation: 1,
   },
   iconText: {
     fontSize: 16,
@@ -261,6 +274,7 @@ const styles = StyleSheet.create({
     fontWeight: '900',
     lineHeight: 18,
     marginTop: -1,
+    letterSpacing: -0.3,
   },
   amountBlock: {
     alignItems: 'flex-end',
@@ -270,12 +284,13 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '800',
     textAlign: 'right',
+    letterSpacing: -0.3,
   },
   amountMeta: {
     fontSize: 10,
     fontWeight: '700',
     textTransform: 'uppercase',
-    letterSpacing: 0.4,
+    letterSpacing: 0.5,
     marginTop: 2,
   },
   metaRow: {
@@ -309,10 +324,12 @@ const styles = StyleSheet.create({
     borderRadius: 999,
     paddingHorizontal: 8,
     paddingVertical: 4,
+    borderWidth: 1,
   },
   statusChipText: {
     fontSize: 10,
     fontWeight: '800',
+    letterSpacing: 0.2,
   },
   usageText: {
     fontSize: 10,

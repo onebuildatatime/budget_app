@@ -1,9 +1,6 @@
 PODS:
   - EXConstants (55.0.17):
     - ExpoModulesCore
-  - EXJSONUtils (55.0.2)
-  - EXManifests (55.0.20):
-    - ExpoModulesCore
   - Expo (55.0.29):
     - ExpoModulesCore
     - hermes-engine
@@ -29,163 +26,7 @@ PODS:
     - ReactCommon/turbomodule/core
     - ReactNativeDependencies
     - Yoga
-  - expo-dev-client (55.0.38):
-    - EXManifests
-    - expo-dev-launcher
-    - expo-dev-menu
-    - expo-dev-menu-interface
-    - EXUpdatesInterface
-  - expo-dev-launcher (55.0.39):
-    - EXManifests
-    - expo-dev-launcher/Main (= 55.0.39)
-    - expo-dev-menu
-    - expo-dev-menu-interface
-    - ExpoModulesCore
-    - EXUpdatesInterface
-    - hermes-engine
-    - RCTRequired
-    - RCTTypeSafety
-    - React-Core
-    - React-Core-prebuilt
-    - React-debug
-    - React-Fabric
-    - React-featureflags
-    - React-graphics
-    - React-ImageManager
-    - React-jsi
-    - React-jsinspector
-    - React-NativeModulesApple
-    - React-RCTAppDelegate
-    - React-RCTFabric
-    - React-renderercss
-    - React-rendererdebug
-    - React-utils
-    - ReactAppDependencyProvider
-    - ReactCodegen
-    - ReactCommon/turbomodule/bridging
-    - ReactCommon/turbomodule/core
-    - ReactNativeDependencies
-    - Yoga
-  - expo-dev-launcher/Main (55.0.39):
-    - EXManifests
-    - expo-dev-launcher/Unsafe
-    - expo-dev-menu
-    - expo-dev-menu-interface
-    - ExpoModulesCore
-    - EXUpdatesInterface
-    - hermes-engine
-    - RCTRequired
-    - RCTTypeSafety
-    - React-Core
-    - React-Core-prebuilt
-    - React-debug
-    - React-Fabric
-    - React-featureflags
-    - React-graphics
-    - React-ImageManager
-    - React-jsi
-    - React-jsinspector
-    - React-NativeModulesApple
-    - React-RCTAppDelegate
-    - React-RCTFabric
-    - React-renderercss
-    - React-rendererdebug
-    - React-utils
-    - ReactAppDependencyProvider
-    - ReactCodegen
-    - ReactCommon/turbomodule/bridging
-    - ReactCommon/turbomodule/core
-    - ReactNativeDependencies
-    - Yoga
-  - expo-dev-launcher/Unsafe (55.0.39):
-    - EXManifests
-    - expo-dev-menu
-    - expo-dev-menu-interface
-    - ExpoModulesCore
-    - EXUpdatesInterface
-    - hermes-engine
-    - RCTRequired
-    - RCTTypeSafety
-    - React-Core
-    - React-Core-prebuilt
-    - React-debug
-    - React-Fabric
-    - React-featureflags
-    - React-graphics
-    - React-ImageManager
-    - React-jsi
-    - React-jsinspector
-    - React-NativeModulesApple
-    - React-RCTAppDelegate
-    - React-RCTFabric
-    - React-renderercss
-    - React-rendererdebug
-    - React-utils
-    - ReactAppDependencyProvider
-    - ReactCodegen
-    - ReactCommon/turbomodule/bridging
-    - ReactCommon/turbomodule/core
-    - ReactNativeDependencies
-    - Yoga
-  - expo-dev-menu (55.0.33):
-    - expo-dev-menu/Main (= 55.0.33)
-    - hermes-engine
-    - RCTRequired
-    - RCTTypeSafety
-    - React-Core
-    - React-Core-prebuilt
-    - React-debug
-    - React-Fabric
-    - React-featureflags
-    - React-graphics
-    - React-ImageManager
-    - React-jsi
-    - React-NativeModulesApple
-    - React-RCTFabric
-    - React-renderercss
-    - React-rendererdebug
-    - React-utils
-    - ReactCodegen
-    - ReactCommon/turbomodule/bridging
-    - ReactCommon/turbomodule/core
-    - ReactNativeDependencies
-    - Yoga
-  - expo-dev-menu-interface (55.0.2)
-  - expo-dev-menu/Main (55.0.33):
-    - EXManifests
-    - expo-dev-menu-interface
-    - ExpoModulesCore
-    - hermes-engine
-    - RCTRequired
-    - RCTTypeSafety
-    - React-Core
-    - React-Core-prebuilt
-    - React-debug
-    - React-Fabric
-    - React-featureflags
-    - React-graphics
-    - React-ImageManager
-    - React-jsi
-    - React-jsinspector
-    - React-NativeModulesApple
-    - React-RCTFabric
-    - React-renderercss
-    - React-rendererdebug
-    - React-utils
-    - ReactCodegen
-    - ReactCommon/turbomodule/bridging
-    - ReactCommon/turbomodule/core
-    - ReactNativeDependencies
-    - Yoga
   - ExpoAsset (55.0.19):
-    - ExpoModulesCore
-  - ExpoCamera (55.0.22):
-    - ExpoModulesCore
-  - ExpoCameraBarcodeScanning (55.0.22):
-    - ExpoCamera
-    - ZXingObjC/OneD
-    - ZXingObjC/PDF417
-  - ExpoContacts (55.0.17):
     - ExpoModulesCore
   - ExpoDocumentPicker (55.0.16):
     - ExpoModulesCore
@@ -232,11 +73,7 @@ PODS:
     - ReactCommon
   - ExpoPrint (55.0.18):
     - ExpoModulesCore
-  - ExpoSensors (55.0.18):
-    - ExpoModulesCore
   - ExpoSharing (55.0.23):
-    - ExpoModulesCore
-  - EXUpdatesInterface (55.1.6):
     - ExpoModulesCore
   - FBLazyVector (0.83.10)
   - hermes-engine (0.14.1):
@@ -244,8 +81,6 @@ PODS:
   - hermes-engine/Pre-built (0.14.1)
   - PdfExtractor (1.0.1):
     - ExpoModulesCore
-  - PurchasesHybridCommon (17.54.0):
-    - RevenueCat (= 5.67.0)
   - RCTDeprecation (0.83.10)
   - RCTRequired (0.83.10)
   - RCTSwiftUI (0.83.10)
@@ -2132,7 +1967,6 @@ PODS:
     - React-utils (= 0.83.10)
     - ReactNativeDependencies
   - ReactNativeDependencies (0.83.10)
-  - RevenueCat (5.67.0)
   - RNCAsyncStorage (2.2.0):
     - hermes-engine
     - RCTRequired
@@ -2177,76 +2011,12 @@ PODS:
     - ReactCommon/turbomodule/core
     - ReactNativeDependencies
     - Yoga
-  - RNPurchases (9.15.1):
-    - PurchasesHybridCommon (= 17.54.0)
-    - React-Core
-  - RNScreens (4.23.0):
-    - hermes-engine
-    - RCTRequired
-    - RCTTypeSafety
-    - React-Core
-    - React-Core-prebuilt
-    - React-debug
-    - React-Fabric
-    - React-featureflags
-    - React-graphics
-    - React-ImageManager
-    - React-jsi
-    - React-NativeModulesApple
-    - React-RCTFabric
-    - React-RCTImage
-    - React-renderercss
-    - React-rendererdebug
-    - React-utils
-    - ReactCodegen
-    - ReactCommon/turbomodule/bridging
-    - ReactCommon/turbomodule/core
-    - ReactNativeDependencies
-    - RNScreens/common (= 4.23.0)
-    - Yoga
-  - RNScreens/common (4.23.0):
-    - hermes-engine
-    - RCTRequired
-    - RCTTypeSafety
-    - React-Core
-    - React-Core-prebuilt
-    - React-debug
-    - React-Fabric
-    - React-featureflags
-    - React-graphics
-    - React-ImageManager
-    - React-jsi
-    - React-NativeModulesApple
-    - React-RCTFabric
-    - React-RCTImage
-    - React-renderercss
-    - React-rendererdebug
-    - React-utils
-    - ReactCodegen
-    - ReactCommon/turbomodule/bridging
-    - ReactCommon/turbomodule/core
-    - ReactNativeDependencies
-    - Yoga
   - Yoga (0.0.0)
-  - ZXingObjC/Core (3.6.9)
-  - ZXingObjC/OneD (3.6.9):
-    - ZXingObjC/Core
-  - ZXingObjC/PDF417 (3.6.9):
-    - ZXingObjC/Core
 
 DEPENDENCIES:
   - EXConstants (from `../node_modules/expo/node_modules/expo-constants/ios`)
-  - EXJSONUtils (from `../node_modules/expo-json-utils/ios`)
-  - EXManifests (from `../node_modules/expo-manifests/ios`)
   - Expo (from `../node_modules/expo`)
-  - expo-dev-client (from `../node_modules/expo-dev-client/ios`)
-  - expo-dev-launcher (from `../node_modules/expo-dev-launcher`)
-  - expo-dev-menu (from `../node_modules/expo-dev-menu`)
-  - expo-dev-menu-interface (from `../node_modules/expo-dev-menu-interface/ios`)
   - ExpoAsset (from `../node_modules/expo/node_modules/expo-asset/ios`)
-  - ExpoCamera (from `../node_modules/expo-camera/ios`)
-  - ExpoCameraBarcodeScanning (from `../node_modules/expo-camera/ios`)
-  - ExpoContacts (from `../node_modules/expo-contacts/ios`)
   - ExpoDocumentPicker (from `../node_modules/expo-document-picker/ios`)
   - "ExpoDomWebView (from `../node_modules/@expo/dom-webview/ios`)"
   - ExpoFileSystem (from `../node_modules/expo-file-system/ios`)
@@ -2257,9 +2027,7 @@ DEPENDENCIES:
   - ExpoModulesCore (from `../node_modules/expo-modules-core`)
   - ExpoModulesJSI (from `../node_modules/expo-modules-core`)
   - ExpoPrint (from `../node_modules/expo-print/ios`)
-  - ExpoSensors (from `../node_modules/expo-sensors/ios`)
   - ExpoSharing (from `../node_modules/expo-sharing/ios`)
-  - EXUpdatesInterface (from `../node_modules/expo-updates-interface/ios`)
   - FBLazyVector (from `../node_modules/react-native/Libraries/FBLazyVector`)
   - hermes-engine (from `../node_modules/react-native/sdks/hermes-engine/hermes-engine.podspec`)
   - PdfExtractor (from `../node_modules/expo-pdf-text-extract/ios`)
@@ -2338,41 +2106,15 @@ DEPENDENCIES:
   - ReactNativeDependencies (from `../node_modules/react-native/third-party-podspecs/ReactNativeDependencies.podspec`)
   - "RNCAsyncStorage (from `../node_modules/@react-native-async-storage/async-storage`)"
   - "RNDateTimePicker (from `../node_modules/@react-native-community/datetimepicker`)"
-  - RNPurchases (from `../node_modules/react-native-purchases`)
-  - RNScreens (from `../node_modules/react-native-screens`)
   - Yoga (from `../node_modules/react-native/ReactCommon/yoga`)
-
-SPEC REPOS:
-  trunk:
-    - PurchasesHybridCommon
-    - RevenueCat
-    - ZXingObjC
 
 EXTERNAL SOURCES:
   EXConstants:
     :path: "../node_modules/expo/node_modules/expo-constants/ios"
-  EXJSONUtils:
-    :path: "../node_modules/expo-json-utils/ios"
-  EXManifests:
-    :path: "../node_modules/expo-manifests/ios"
   Expo:
     :path: "../node_modules/expo"
-  expo-dev-client:
-    :path: "../node_modules/expo-dev-client/ios"
-  expo-dev-launcher:
-    :path: "../node_modules/expo-dev-launcher"
-  expo-dev-menu:
-    :path: "../node_modules/expo-dev-menu"
-  expo-dev-menu-interface:
-    :path: "../node_modules/expo-dev-menu-interface/ios"
   ExpoAsset:
     :path: "../node_modules/expo/node_modules/expo-asset/ios"
-  ExpoCamera:
-    :path: "../node_modules/expo-camera/ios"
-  ExpoCameraBarcodeScanning:
-    :path: "../node_modules/expo-camera/ios"
-  ExpoContacts:
-    :path: "../node_modules/expo-contacts/ios"
   ExpoDocumentPicker:
     :path: "../node_modules/expo-document-picker/ios"
   ExpoDomWebView:
@@ -2393,12 +2135,8 @@ EXTERNAL SOURCES:
     :path: "../node_modules/expo-modules-core"
   ExpoPrint:
     :path: "../node_modules/expo-print/ios"
-  ExpoSensors:
-    :path: "../node_modules/expo-sensors/ios"
   ExpoSharing:
     :path: "../node_modules/expo-sharing/ios"
-  EXUpdatesInterface:
-    :path: "../node_modules/expo-updates-interface/ios"
   FBLazyVector:
     :path: "../node_modules/react-native/Libraries/FBLazyVector"
   hermes-engine:
@@ -2554,26 +2292,13 @@ EXTERNAL SOURCES:
     :path: "../node_modules/@react-native-async-storage/async-storage"
   RNDateTimePicker:
     :path: "../node_modules/@react-native-community/datetimepicker"
-  RNPurchases:
-    :path: "../node_modules/react-native-purchases"
-  RNScreens:
-    :path: "../node_modules/react-native-screens"
   Yoga:
     :path: "../node_modules/react-native/ReactCommon/yoga"
 
 SPEC CHECKSUMS:
   EXConstants: dd0b0af9c628c00bc5ce556964210c4465ac9ffe
-  EXJSONUtils: 04bc3807d351331a5fe154ce1da596ec15d99169
-  EXManifests: 112a14b1bbc879459153c520eaf52abd7ccb89ca
   Expo: eededa10ff1791a3e20a4e8de0e9a06359835824
-  expo-dev-client: cb31fe2d3d58bbf98de069a011afdeb6ad4f57c8
-  expo-dev-launcher: 3e6a516b312a8edf164afc7ec07ddc7a15561e32
-  expo-dev-menu: e27f9c1ca1f962aa631301cbaf6bec9ffb73b9a5
-  expo-dev-menu-interface: 833795f4c98a674d36cbc12b11b21756c38e01e8
   ExpoAsset: 127251816584c90538ea1d78350282b570d0358c
-  ExpoCamera: ce4dc6033ed4d4225f178e39bdf691b9650c68cc
-  ExpoCameraBarcodeScanning: 2cfbc29c50c217393405580701856c4a3dcabcd7
-  ExpoContacts: d83c8d1e6ab6f681ac00b9fa84b01a201201fede
   ExpoDocumentPicker: 7562b860739a9b8aa55158d20b7251688bd52015
   ExpoDomWebView: 317a0d188cfdb850fc6fd2a43a2fc132dfd171ee
   ExpoFileSystem: 51709779a8e9158248b6f538cfd3ee6eb12cc580
@@ -2584,13 +2309,10 @@ SPEC CHECKSUMS:
   ExpoModulesCore: 78d42c809becc85798b5d102af2673e054cd796b
   ExpoModulesJSI: 52db434b6c7f626a4613974b2bd05f9816c07224
   ExpoPrint: cf653406be8f001d529ee893e8fa45f623866e00
-  ExpoSensors: 334adc0fcac9afca6ba034f6fd8e49566aa0db35
   ExpoSharing: 41cad701c2fc5676ac0d7bba54a9e852a3ff5481
-  EXUpdatesInterface: 33cfb4116f9ddd0ee1732484248495d4fece9744
   FBLazyVector: b88945378388c6651d3725b0e8c2624fbb37ec64
   hermes-engine: f37e1d6f1eb198649a60b3f17b6f685a6ac12470
   PdfExtractor: 1693f77452beca15d00a1967acc58648f2575d3c
-  PurchasesHybridCommon: 6a8f4e30952167d2afaccf17ebcf8f8107060e4c
   RCTDeprecation: 86774ca0048c2293d01cc7dfb71811fd32ebbd46
   RCTRequired: c7f2bc9661a7c341d33f411fc161f057c97cc731
   RCTSwiftUI: 3b36c814293f91f5179c0f113a885ce47853035c
@@ -2663,14 +2385,10 @@ SPEC CHECKSUMS:
   ReactCodegen: ecbd22c07f187aa9f1772690228d11aa26aafe39
   ReactCommon: e8e2f75f9847b9e23aa851690d5f191137da9d6b
   ReactNativeDependencies: 9ad897b4bb84b1ffd75f7b1f82555c9e7b8f8f81
-  RevenueCat: f0d05079b59c33c645293bbc1fa78469ea7fcae7
   RNCAsyncStorage: e85a99325df9eb0191a6ee2b2a842644c7eb29f4
   RNDateTimePicker: 5e0666de98f1edfac67ee7dde6be8a5415e487a0
-  RNPurchases: 38948da90967b1efa7571df9f9949d0d65eb6333
-  RNScreens: fb11b7412bcbdc0ffafcaf9174938d998d4e2bc4
   Yoga: 3a3ee5afb97f3a990839cfae6092b0540c7441a4
-  ZXingObjC: 8898711ab495761b2dbbdec76d90164a6d7e14c5
 
-PODFILE CHECKSUM: 53d5f5b800dd289702f3b2cdf50d4b42c3ab6b22
+PODFILE CHECKSUM: 5dc74f95cbb6837b82484f80cbcbce78fa55dc33
 
 COCOAPODS: 1.16.2

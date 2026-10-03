@@ -1,5 +1,6 @@
 import { memo } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import * as Haptics from 'expo-haptics';
 
 type Tone = 'good' | 'warning' | 'alert';
 
@@ -147,13 +148,19 @@ export const TransactionListItem = memo(function TransactionListItem({
         <View style={styles.cardActions}>
           <Pressable
             style={[styles.cardActionButton, { backgroundColor: palette.accentSoft }]}
-            onPress={onEdit}
+            onPress={() => {
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+              onEdit();
+            }}
           >
             <Text style={[styles.cardActionText, { color: palette.accentText }]}>Edit</Text>
           </Pressable>
           <Pressable
             style={[styles.cardActionButton, { backgroundColor: palette.alertSurface }]}
-            onPress={onDelete}
+            onPress={() => {
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+              onDelete();
+            }}
           >
             <Text style={[styles.cardActionText, { color: palette.alertText }]}>Delete</Text>
           </Pressable>
@@ -175,6 +182,11 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     gap: 5,
     marginBottom: 10,
+    shadowColor: '#000',
+    shadowOpacity: 0.04,
+    shadowRadius: 6,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 2,
   },
   header: {
     flexDirection: 'row',
@@ -196,6 +208,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     flexShrink: 0,
+    shadowColor: '#000',
+    shadowOpacity: 0.02,
+    shadowRadius: 4,
+    shadowOffset: { width: 0, height: 1 },
+    elevation: 1,
   },
   iconText: {
     fontSize: 22,
@@ -220,6 +237,7 @@ const styles = StyleSheet.create({
     fontSize: 20,
     lineHeight: 22,
     textAlign: 'right',
+    letterSpacing: -0.3,
   },
   tagRow: {
     flexDirection: 'row',
@@ -236,6 +254,7 @@ const styles = StyleSheet.create({
     fontSize: 10,
     fontWeight: '500',
     lineHeight: 12,
+    letterSpacing: 0.2,
   },
   cardActions: {
     flexDirection: 'row',
