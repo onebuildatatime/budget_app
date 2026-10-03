@@ -153,7 +153,8 @@ type TransactionFilter = 'all' | 'over' | 'healthy';
 type TransactionSort = 'recent' | 'highest';
 type ActivityScope = 'today' | 'week' | 'month';
 type ScreenId = 'home' | 'spend' | 'plan' | 'insights' | 'settings';
-type SettingsSection = 'overview' | 'appearance' | 'locale' | 'data';
+type SettingsSection = 'overview' | 'appearance' | 'locale' | 'accounts' | 'data';
+type AuthMode = 'create' | 'signin';
 type InsightSpendMode = 'all' | 'adjustable';
 type AlertTone = 'good' | 'warning' | 'alert';
 type CategoryBucketMode = 'auto' | 'manual';
@@ -1027,6 +1028,76 @@ export default function App() {
   const [searchMaxAmount, setSearchMaxAmount] = useState('');
   const [searchDateFrom, setSearchDateFrom] = useState<Date | null>(null);
   const [searchDateTo, setSearchDateTo] = useState<Date | null>(null);
+
+  // Stub state for removed premium features
+  const setAuthStatus = (x?: any) => {};
+  const setExpenseAiSuggestion = (x?: any) => {};
+  const setExpenseAiBusy = (x?: any) => {};
+  const setExpenseAiError = (x?: any) => {};
+  const setShowDeleteAccountPassword = (x?: any) => {};
+  const setShowAuthPassword = (x?: any) => {};
+  const setDeleteAccountPassword = (x?: any) => {};
+  const setAuthPassword = (x?: any) => {};
+  const setAuthConfirmPassword = (x?: any) => {};
+  const setAuthBusy = (x?: any) => {};
+  const setCloudState = (x?: any) => {};
+  const setShowDeleteAccountPrompt = (x?: any) => {};
+  const setShowAuthComposer = (x?: any) => {};
+  const setMonthPlannerErrorByMonthId = (x?: any) => {};
+  const setImportCleanupError = (x?: any) => {};
+  const setAuthMode = (x?: any) => {};
+  const setAiReviewErrorByMonthId = (x?: any) => {};
+  const authUser: any = null;
+  const authMode: any = 'create';
+  const expenseAiSuggestion: any = null;
+  const paywallBusyAction: any = null;
+  const paywallStatus: any = '';
+  const bootstrappedUserIdRef: any = { current: null };
+  const isAuthReady: any = true;
+  const purchaseSnapshot: any = { purchaseState: 'ready', premiumStatus: 'free', packages: [] };
+  const showAuthPassword: any = false;
+  const deleteAccountPassword: any = '';
+  const deleteAccountBusy: any = false;
+  const authPassword: any = '';
+  const authConfirmPassword: any = '';
+  const aiReviewByMonthId: any = {};
+  const aiReviewErrorByMonthId: any = {};
+  const aiReviewBusyMonthId: any = null;
+  const monthPlannerByMonthId: any = {};
+  const monthPlannerErrorByMonthId: any = {};
+  const monthPlannerBusyMonthId: any = null;
+  const openPremiumPaywall = (x?: any) => {};
+  const dismissPaywall = async () => {};
+  const ensureBudgetCloudUser = async (x?: any) => {};
+  const createBudgetPasswordAccount = async () => {};
+  const signInBudgetPasswordUser = async () => {};
+  const sendBudgetPasswordReset = async () => {};
+  const deleteBudgetUserAccount = async () => {};
+  const signOutBudgetUser = async () => {};
+  const loadBudgetCloudState = async () => {};
+  const saveBudgetCloudState = async () => {};
+  const getBudgetAiMonthlyReview = async () => {};
+  const getBudgetAiExpenseAssist = async () => {};
+  const getBudgetAiImportCleanup = async () => {};
+  const getBudgetAiMonthPlanner = async () => {};
+  const setAiReviewBusyMonthId = (x?: any) => {};
+  const setAiReviewByMonthId = (x?: any) => {};
+  const setImportCleanupBusy = (x?: any) => {};
+  const setImportCleanupReview = (x?: any) => {};
+  const setMonthPlannerBusyMonthId = (x?: any) => {};
+  const setMonthPlannerByMonthId = (x?: any) => {};
+  const setShowConfetti = (x?: any) => {};
+  const setDeleteAccountBusy = (x?: any) => {};
+  const setAuthEmail = (x?: any) => {};
+  const purchasePremiumAccess = (x?: any) => {};
+  const restorePremiumAccess = async () => {};
+  const handleManageSubscription = async () => {};
+  const setPaywallSource = (x?: any) => {};
+  const isPaywallVisible: any = false;
+  const authStatus: any = '';
+  const authEmail: any = '';
+  const showAuthComposer: any = false;
+  const showDeleteAccountPrompt: any = false;
   const [showAdvancedSearch, setShowAdvancedSearch] = useState(false);
   const [showWeeklyPace, setShowWeeklyPace] = useState(true);
   const [showRecurringList, setShowRecurringList] = useState(false);
@@ -1085,22 +1156,6 @@ export default function App() {
   const [showAdvancedFiltersModal, setShowAdvancedFiltersModal] = useState(false);
   const [insightWindow, setInsightWindow] = useState<InsightWindow>('quarter');
   const [insightSpendMode, setInsightSpendMode] = useState<InsightSpendMode>('all');
-  const [aiReviewByMonthId, setAiReviewByMonthId] = useState<Record<string, MonthlyAiReview>>({});
-  const [aiReviewBusyMonthId, setAiReviewBusyMonthId] = useState<string | null>(null);
-  const [aiReviewErrorByMonthId, setAiReviewErrorByMonthId] = useState<Record<string, string>>({});
-  const [expenseAiSuggestion, setExpenseAiSuggestion] = useState<ExpenseAiAssist | null>(null);
-  const [expenseAiBusy, setExpenseAiBusy] = useState(false);
-  const [expenseAiError, setExpenseAiError] = useState('');
-  const [importCleanupReview, setImportCleanupReview] = useState<ImportCleanupReview | null>(null);
-  const [importCleanupBusy, setImportCleanupBusy] = useState(false);
-  const [importCleanupError, setImportCleanupError] = useState('');
-  const [monthPlannerByMonthId, setMonthPlannerByMonthId] = useState<
-    Record<string, MonthPlannerReview>
-  >({});
-  const [monthPlannerBusyMonthId, setMonthPlannerBusyMonthId] = useState<string | null>(null);
-  const [monthPlannerErrorByMonthId, setMonthPlannerErrorByMonthId] = useState<
-    Record<string, string>
-  >({});
   const [planSetupStep, setPlanSetupStep] = useState<BudgetSetupStep>('limit');
   const [showCategoryComposer, setShowCategoryComposer] = useState(false);
   const [isBudgetSetupActive, setIsBudgetSetupActive] = useState(false);
@@ -1247,29 +1302,6 @@ export default function App() {
     latestStateRef.current = appState;
   }, [appState]);
 
-  useEffect(() => {
-    let isActive = true;
-
-    const hydratePaywallDismissal = async () => {
-      try {
-        const stored = await AsyncStorage.getItem(PREMIUM_PAYWALL_DISMISS_KEY);
-
-        if (isActive) {
-          setIsPaywallDismissed(stored === '1');
-        }
-      } finally {
-        if (isActive) {
-          setHasLoadedPaywallDismissal(true);
-        }
-      }
-    };
-
-    void hydratePaywallDismissal();
-
-    return () => {
-      isActive = false;
-    };
-  }, []);
 
 
   useEffect(() => {
@@ -2532,91 +2564,27 @@ export default function App() {
     activeScreen === 'insights' ? 'settings' : activeScreen;
   const showLegacyHome: boolean = false;
   const showLegacyPlan: boolean = false;
-  const isSignedIn = Boolean(authUser && !authUser.isAnonymous);
-  const premiumStatus = purchaseSnapshot.premiumStatus;
-  const purchaseState = purchaseSnapshot.purchaseState;
-  const hasPremiumAccess = premiumStatus === 'premium';
-  const annualPremiumPackage =
-    purchaseSnapshot.packages.find((option) => option.kind === 'annual') ?? null;
-  const monthlyPremiumPackage =
-    purchaseSnapshot.packages.find((option) => option.kind === 'monthly') ?? null;
-  const cloudBackupEnabled = appState.preferences.cloudBackupEnabled;
-  const shouldUseCloudBackup =
-    !FREE_LOCAL_RELEASE && cloudBackupEnabled && isSignedIn && hasPremiumAccess;
-  const premiumStatusLabel =
-    purchaseState === 'loading'
-      ? 'Checking plan'
-      : hasPremiumAccess
-        ? 'Premium active'
-        : 'Essential';
-  const friendlyPurchaseError =
-    purchaseSnapshot.lastError?.includes('EXPO_PUBLIC_REVENUECAT_IOS_API_KEY')
-      ? 'Premium is unavailable right now.'
-      : purchaseSnapshot.lastError;
-  const premiumStatusMeta =
-    purchaseState === 'error'
-      ? friendlyPurchaseError ?? 'Premium is unavailable right now.'
-      : hasPremiumAccess
-        ? 'Smart tools and recovery backup are ready when you want them.'
-        : 'Budget Buddy Essential is always yours. Premium adds AI insights and recovery backup.';
-  const authEmailNormalized = authEmail.trim().toLowerCase();
-  const authStatusIsError =
-    /could not|did not|enter |at least 6|must match|failed|too many|not enabled|invalid|network/i.test(
-      authStatus,
-    );
-  const authStatusColor =
-    authStatusIsError ? currentTheme.alertText : currentTheme.accentText;
-  const authPrimaryDisabled =
-    authBusy ||
-    !authEmailNormalized ||
-    authPassword.length < 6 ||
-    (authMode === 'create' && authPassword !== authConfirmPassword);
-  const accountManagementBusy = authBusy || deleteAccountBusy;
-  const cloudBackupMessage =
-    saveState === 'error'
-      ? 'Local save failed on this device. Check storage space, then try again.'
-      : !hasPremiumAccess
-        ? 'Backup stays off until Premium is active.'
-      : !cloudBackupEnabled
-      ? 'Local-only mode is active.'
-      : !isSignedIn
-        ? 'Sign in to turn on recoverable backup.'
-        : cloudState === 'connecting'
-          ? 'Checking backup status...'
-          : cloudState === 'syncing'
-            ? 'Saving backup...'
-            : cloudState === 'synced'
-              ? 'Backup is up to date.'
-              : 'Backup is unavailable right now. Your local copy is still safe.';
-  const accountModeValue = isSignedIn ? 'Signed in' : 'Personal';
-  const accountModeMeta = isSignedIn
-    ? authUser?.email ?? 'Signed in on this device.'
-    : 'Everything is staying on this device right now.';
-  const backupStateValue =
-    hasPremiumAccess && cloudBackupEnabled && isSignedIn ? 'Backup on' : 'Personal';
-  const backupStateMeta = hasPremiumAccess
-    ? isSignedIn
-      ? cloudBackupEnabled
-        ? 'Recoverable after reinstall.'
-        : 'Turn it on only when you want recovery.'
-      : 'Sign in first to enable recovery.'
-    : 'Needs Premium and sign-in.';
-  useEffect(() => {
-    if (!isHydrated || !cloudBackupEnabled || purchaseState !== 'ready' || hasPremiumAccess) {
-      return;
-    }
-
-    updateAppState((current) => ({
-      ...current,
-      preferences: {
-        ...current.preferences,
-        cloudBackupEnabled: false,
-      },
-    }));
-    setCloudState('local-only');
-    setAuthStatus('Backup now needs Premium. This device stays local-only until Premium is active again.');
-  }, [cloudBackupEnabled, hasPremiumAccess, isHydrated, purchaseState]);
-
+  const isSignedIn = false;
+  const premiumStatus = 'free' as const;
+  const purchaseState = 'ready' as const;
+  const hasPremiumAccess = false;
+  const annualPremiumPackage = null;
+  const monthlyPremiumPackage = null;
+  const cloudBackupEnabled = false;
+  const shouldUseCloudBackup = false;
+  const premiumStatusLabel = 'Essential';
+  const friendlyPurchaseError = null;
+  const premiumStatusMeta = 'Budget Buddy Essential – local-first, always free.';
+  const authEmailNormalized = '';
+  const authStatusIsError = false;
+  const authStatusColor = currentTheme.accentText;
+  const authPrimaryDisabled = true;
+  const accountManagementBusy = false;
+  const cloudBackupMessage = 'Your data stays on this device.';
+  const accountModeValue = 'Personal';
+  const accountModeMeta = 'Everything stays on this device.';
+  const backupStateValue = 'Personal';
+  const backupStateMeta = 'Local-first mode – always on.';
   const activateSettingsSection = (section: SettingsSection) => {
     if (section !== 'locale') {
       setCurrencySearchQuery('');
@@ -2637,30 +2605,6 @@ export default function App() {
     setActiveScreen(screen);
   };
 
-  const dismissPaywall = async () => {
-    setIsPaywallVisible(false);
-    setPaywallBusyAction(null);
-    setPaywallStatus('');
-
-    if (isPaywallDismissed) {
-      return;
-    }
-
-    setIsPaywallDismissed(true);
-
-    try {
-      await AsyncStorage.setItem(PREMIUM_PAYWALL_DISMISS_KEY, '1');
-    } catch {
-      // Keep going even if the dismissal flag could not be persisted.
-    }
-  };
-
-  const openPremiumPaywall = (source: PaywallSource) => {
-    setPaywallSource(source);
-    setPaywallStatus('');
-    setPaywallBusyAction(null);
-    setIsPaywallVisible(true);
-  };
 
   const handleCategoryToggle = (categoryId: string) => {
     setSelectedCategories((prev) => {
@@ -2674,88 +2618,6 @@ export default function App() {
     });
   };
 
-  const handleManageSubscription = async () => {
-    try {
-      await openSubscriptionManagement();
-    } catch {
-      setPaywallStatus('Subscription management could not be opened right now.');
-    }
-  };
-
-  const handlePremiumPurchaseResult = async (nextSnapshot: PurchaseSnapshot) => {
-    setPurchaseSnapshot(nextSnapshot);
-    setPaywallStatus('');
-
-    if (paywallSource === 'backup_toggle') {
-      activateSettingsSection('cloud');
-      navigateToScreen('settings');
-
-      if (!isSignedIn) {
-        setAuthStatus('Premium is active. Sign in or create an account to make backup recoverable.');
-        setIsPaywallVisible(false);
-        return;
-      }
-
-      updateAppState((current) => ({
-        ...current,
-        preferences: {
-          ...current.preferences,
-          cloudBackupEnabled: true,
-        },
-      }));
-      setAuthStatus('Premium is active. Backup can now stay on for this account.');
-    }
-
-    await dismissPaywall();
-  };
-
-  const purchasePremiumAccess = async (selectedPackage: PremiumPackageOption | null) => {
-    if (!selectedPackage) {
-      setPaywallStatus('Premium is unavailable right now. Budget Buddy Essential is always available.');
-      return;
-    }
-
-    setPaywallBusyAction(selectedPackage.id);
-    setPaywallStatus('');
-
-    try {
-      const nextSnapshot = await purchasePremiumPackage(selectedPackage.id);
-      await handlePremiumPurchaseResult(nextSnapshot);
-    } catch (error) {
-      setPaywallStatus(
-        error instanceof Error && error.message
-          ? error.message
-          : 'Premium purchase could not be completed.',
-      );
-    } finally {
-      setPaywallBusyAction(null);
-    }
-  };
-
-  const restorePremiumAccess = async () => {
-    setPaywallBusyAction('restore');
-    setPaywallStatus('');
-
-    try {
-      const nextSnapshot = await restorePremiumPurchases();
-
-      if (nextSnapshot.premiumStatus !== 'premium') {
-        setPurchaseSnapshot(nextSnapshot);
-        setPaywallStatus('No active Premium subscription was found to restore.');
-        return;
-      }
-
-      await handlePremiumPurchaseResult(nextSnapshot);
-    } catch (error) {
-      setPaywallStatus(
-        error instanceof Error && error.message
-          ? error.message
-          : 'Purchases could not be restored right now.',
-      );
-    } finally {
-      setPaywallBusyAction(null);
-    }
-  };
 
   const openThemePicker = () => {
     setIsThemeSheetOpen(true);
@@ -6551,7 +6413,7 @@ export default function App() {
         </View>
       ) : null}
 
-      {activeSettingsSection === 'cloud' ? (
+      {false ? (
         <View style={styles.card}>
           <Text style={styles.sectionTitle}>Recovery</Text>
           <Text style={styles.sectionSubtitle}>Your budget stays personal by default. Enable recovery backup when you want protection after reinstall.</Text>
