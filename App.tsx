@@ -7,7 +7,6 @@ import * as DocumentPicker from 'expo-document-picker';
 import * as FileSystem from 'expo-file-system/legacy';
 import * as Haptics from 'expo-haptics';
 import * as Print from 'expo-print';
-import { extractText as extractPdfText, isAvailable as isPdfTextExtractAvailable } from 'expo-pdf-text-extract';
 import { StatusBar } from 'expo-status-bar';
 import * as Sharing from 'expo-sharing';
 import { useEffect, useMemo, useRef, useState } from 'react';
@@ -92,20 +91,13 @@ import {
   type Transaction,
 } from './budgetModel';
 import {
-  buildBudgetPdfHtml,
-  buildImportableBudgetPdfBase64,
   buildLedgerCsv,
-  buildWorkbookBase64,
-  importBudgetPdfBase64,
-  importISaveMoneyPdfText,
   importLedgerCsv,
-  importWorkbookBase64,
 } from './dataTransfer';
 import { AppToast } from './components/AppToast';
 import { BudgetCategoryRow } from './components/BudgetCategoryRow';
 import { TransactionListItem } from './components/TransactionListItem';
 import { PremiumBadge } from './components/PremiumBadge';
-import ConfettiCannon from 'react-native-confetti-cannon';
 import { AnimatedBackground } from './src/components/layout/AnimatedBackground';
 import { triggerHaptic } from './src/utils/haptics';
 
@@ -154,46 +146,14 @@ import {
   type InsightWindow,
   type PaywallSource,
 } from './src/constants';
-import {
-  createBudgetPasswordAccount,
-  deleteBudgetUserAccount,
-  getBudgetAiExpenseAssist,
-  getBudgetAiImportCleanup,
-  getBudgetAiMonthPlanner,
-  ensureBudgetCloudUser,
-  getBudgetAiMonthlyReview,
-  loadBudgetCloudState,
-  saveBudgetCloudState,
-  sendBudgetPasswordReset,
-  signInBudgetPasswordUser,
-  signOutBudgetUser,
-  subscribeToBudgetAuth,
-  type BudgetAiExpenseAssistResponse,
-  type BudgetAiImportCleanupResponse,
-  type BudgetAiMonthPlannerResponse,
-  type BudgetAiMonthlyReviewResponse,
-  type BudgetAuthUser,
-} from './firebaseClient';
-import {
-  getPurchaseSnapshot,
-  initializePurchases,
-  openSubscriptionManagement,
-  purchasePremiumPackage,
-  restorePremiumPurchases,
-  subscribeToPurchaseState,
-  type PremiumPackageOption,
-  type PurchaseSnapshot,
-} from './purchaseClient';
 import { useToast } from './hooks/useToast';
 
 type SaveState = 'hydrating' | 'saving' | 'saved' | 'error';
-type CloudState = 'connecting' | 'syncing' | 'synced' | 'local-only';
 type TransactionFilter = 'all' | 'over' | 'healthy';
 type TransactionSort = 'recent' | 'highest';
 type ActivityScope = 'today' | 'week' | 'month';
-type AuthMode = 'create' | 'signin';
 type ScreenId = 'home' | 'spend' | 'plan' | 'insights' | 'settings';
-type SettingsSection = 'overview' | 'appearance' | 'locale' | 'accounts' | 'cloud' | 'data';
+type SettingsSection = 'overview' | 'appearance' | 'locale' | 'data';
 type InsightSpendMode = 'all' | 'adjustable';
 type AlertTone = 'good' | 'warning' | 'alert';
 type CategoryBucketMode = 'auto' | 'manual';
@@ -220,21 +180,6 @@ type InsightSuggestion = {
   body: string;
 };
 
-type MonthlyAiReview = BudgetAiMonthlyReviewResponse & {
-  generatedAt: number;
-};
-
-type ExpenseAiAssist = BudgetAiExpenseAssistResponse & {
-  generatedAt: number;
-};
-
-type ImportCleanupReview = BudgetAiImportCleanupResponse & {
-  generatedAt: number;
-};
-
-type MonthPlannerReview = BudgetAiMonthPlannerResponse & {
-  generatedAt: number;
-};
 
 type WeeklyInsightRow = {
   label: string;
@@ -953,37 +898,6 @@ const loadPdfJsModule = (): PdfJsModule => {
   );
 };
 
-const extractPdfTextWithPdfJs = async (uri: string) => {
-  const pdfjs = loadPdfJsModule();
-  const base64Content = await FileSystem.readAsStringAsync(uri, {
-    encoding: FileSystem.EncodingType.Base64,
-  });
-  const pdfBytes = decodeBase64ToBytes(base64Content);
-  const loadingTask = pdfjs.getDocument({
-    data: pdfBytes,
-    disableWorker: true,
-    useWorkerFetch: false,
-    isEvalSupported: false,
-    disableFontFace: true,
-  });
-  const pdf = await loadingTask.promise;
-  const pages: string[] = [];
-
-  for (let pageNumber = 1; pageNumber <= pdf.numPages; pageNumber += 1) {
-    const page = await pdf.getPage(pageNumber);
-    const textContent = await page.getTextContent();
-    const pageText = textContent.items
-      .map((item: { str?: string }) => (typeof item.str === 'string' ? item.str : ''))
-      .filter(Boolean)
-      .join('\n');
-
-    pages.push(pageText);
-    page.cleanup();
-  }
-
-  return pages.join('\n');
-};
-
 const getAuthErrorMessage = (error: unknown) => {
   const code =
     typeof error === 'object' &&
@@ -1078,30 +992,6 @@ export default function App() {
   );
   const [isHydrated, setIsHydrated] = useState(false);
   const [saveState, setSaveState] = useState<SaveState>('hydrating');
-  const [cloudState, setCloudState] = useState<CloudState>('connecting');
-  const [authUser, setAuthUser] = useState<BudgetAuthUser | null>(null);
-  const [isAuthReady, setIsAuthReady] = useState(false);
-  const [purchaseSnapshot, setPurchaseSnapshot] = useState<PurchaseSnapshot>(() =>
-    getPurchaseSnapshot(),
-  );
-  const [isPaywallVisible, setIsPaywallVisible] = useState(false);
-  const [paywallSource, setPaywallSource] = useState<PaywallSource>('settings_upgrade');
-  const [paywallBusyAction, setPaywallBusyAction] = useState<string | null>(null);
-  const [paywallStatus, setPaywallStatus] = useState('');
-  const [hasLoadedPaywallDismissal, setHasLoadedPaywallDismissal] = useState(false);
-  const [isPaywallDismissed, setIsPaywallDismissed] = useState(false);
-  const [authMode, setAuthMode] = useState<AuthMode>('create');
-  const [showAuthComposer, setShowAuthComposer] = useState(false);
-  const [authEmail, setAuthEmail] = useState('');
-  const [authPassword, setAuthPassword] = useState('');
-  const [authConfirmPassword, setAuthConfirmPassword] = useState('');
-  const [authStatus, setAuthStatus] = useState('');
-  const [authBusy, setAuthBusy] = useState(false);
-  const [showAuthPassword, setShowAuthPassword] = useState(false);
-  const [showDeleteAccountPrompt, setShowDeleteAccountPrompt] = useState(false);
-  const [deleteAccountPassword, setDeleteAccountPassword] = useState('');
-  const [showDeleteAccountPassword, setShowDeleteAccountPassword] = useState(false);
-  const [deleteAccountBusy, setDeleteAccountBusy] = useState(false);
   const [activeScreen, setActiveScreen] = useState<ScreenId>('home');
 
   const [expenseAmount, setExpenseAmount] = useState('');
@@ -1121,7 +1011,6 @@ export default function App() {
   const [incomeAmount, setIncomeAmount] = useState('');
   const [incomeSource, setIncomeSource] = useState('');
   const [editingIncomeId, setEditingIncomeId] = useState<string | null>(null);
-  const [showConfetti, setShowConfetti] = useState(false);
   const [editingTransactionId, setEditingTransactionId] = useState<string | null>(null);
   const [selectedCategoryDetailId, setSelectedCategoryDetailId] = useState<string | null>(null);
   const [showCategoryDetailSubcategoryInput, setShowCategoryDetailSubcategoryInput] = useState(false);
@@ -1151,7 +1040,6 @@ export default function App() {
   // Top 3 Features
   const [budgetStreak, setBudgetStreak] = useState(0);
   const [achievements, setAchievements] = useState<string[]>([]);
-  const [showReceiptScanner, setShowReceiptScanner] = useState(false);
   const [receiptAmount, setReceiptAmount] = useState('');
   const [showInsights, setShowInsights] = useState(false);
   const [accountCustomKindsText, setAccountCustomKindsText] = useState('');
@@ -1219,8 +1107,6 @@ export default function App() {
   const [isDeleteBudgetPromptOpen, setIsDeleteBudgetPromptOpen] = useState(false);
 
   const latestStateRef = useRef(appState);
-  const bootstrappedUserIdRef = useRef<string | null>(null);
-  const setupPaywallPromptShownRef = useRef(false);
   const setupConfettiShownRef = useRef(false);
   const budgetCategoryNameInputRef = useRef<TextInput>(null);
   const budgetCategoryAmountInputRef = useRef<TextInput>(null);
@@ -1385,53 +1271,6 @@ export default function App() {
     };
   }, []);
 
-  useEffect(() => subscribeToPurchaseState(setPurchaseSnapshot), []);
-
-  useEffect(() => {
-    if (FREE_LOCAL_RELEASE) {
-      setAuthUser(null);
-      setIsAuthReady(true);
-      setCloudState('local-only');
-      return;
-    }
-
-    const unsubscribe = subscribeToBudgetAuth((nextUser) => {
-      setAuthUser(nextUser);
-      setIsAuthReady(true);
-    });
-
-    return unsubscribe;
-  }, []);
-
-  useEffect(() => {
-    if (authUser?.email) {
-      setAuthEmail(authUser.email.toLowerCase());
-    }
-  }, [authUser?.email]);
-
-  useEffect(() => {
-    if (!isAuthReady) {
-      return;
-    }
-
-    let isActive = true;
-
-    const syncPurchases = async () => {
-      const snapshot = await initializePurchases(
-        authUser && !authUser.isAnonymous ? authUser.uid : null,
-      );
-
-      if (isActive) {
-        setPurchaseSnapshot(snapshot);
-      }
-    };
-
-    void syncPurchases();
-
-    return () => {
-      isActive = false;
-    };
-  }, [authUser?.isAnonymous, authUser?.uid, isAuthReady]);
 
   useEffect(() => {
     if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
@@ -1846,31 +1685,7 @@ export default function App() {
       return;
     }
     setupConfettiShownRef.current = true;
-    setShowConfetti(true);
   }, [isBudgetSetupComplete]);
-
-  useEffect(() => {
-    if (
-      FREE_LOCAL_RELEASE ||
-      !hasLoadedPaywallDismissal ||
-      isPaywallDismissed ||
-      setupPaywallPromptShownRef.current ||
-      purchaseSnapshot.purchaseState === 'loading' ||
-      purchaseSnapshot.premiumStatus === 'premium' ||
-      !isBudgetSetupComplete
-    ) {
-      return;
-    }
-
-    setupPaywallPromptShownRef.current = true;
-    openPremiumPaywall('setup_complete');
-  }, [
-    hasLoadedPaywallDismissal,
-    isBudgetSetupComplete,
-    isPaywallDismissed,
-    purchaseSnapshot.premiumStatus,
-    purchaseSnapshot.purchaseState,
-  ]);
   const aiReviewHistoryMonths = useMemo(
     () =>
       sortedMonths
@@ -5063,111 +4878,7 @@ export default function App() {
     }
   };
 
-  const exportCsvLedger = async () => {
-    try {
-      if (!FileSystem.cacheDirectory) {
-        showToast({ message: 'Export is unavailable because the device file cache is not ready.', tone: 'error' });
-        void triggerHaptic('error');
-        return;
-      }
 
-      const csvUri = `${FileSystem.cacheDirectory}budget-buddy-ledger-${activeMonth.id}.csv`;
-      await FileSystem.writeAsStringAsync(csvUri, buildLedgerCsv(appState));
-      await shareExportedFile(csvUri, {
-        dialogTitle: 'Export CSV ledger',
-        mimeType: 'text/csv',
-        UTI: 'public.comma-separated-values-text',
-      });
-    } catch {
-      showToast({ message: 'The CSV ledger could not be created.', tone: 'error' });
-      void triggerHaptic('error');
-    }
-  };
-
-  const exportWorkbook = async () => {
-    try {
-      if (!FileSystem.cacheDirectory) {
-        showToast({ message: 'Export is unavailable because the device file cache is not ready.', tone: 'error' });
-        void triggerHaptic('error');
-        return;
-      }
-
-      const workbookUri = `${FileSystem.cacheDirectory}budget-buddy-workbook-${activeMonth.id}.xlsx`;
-      await FileSystem.writeAsStringAsync(workbookUri, buildWorkbookBase64(appState), {
-        encoding: FileSystem.EncodingType.Base64,
-      });
-      await shareExportedFile(workbookUri, {
-        dialogTitle: 'Export XLSX workbook',
-        mimeType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-      });
-    } catch {
-      showToast({ message: 'The XLSX workbook could not be created.', tone: 'error' });
-      void triggerHaptic('error');
-    }
-  };
-
-  const exportPdfReport = async () => {
-    try {
-      const html = buildBudgetPdfHtml(appState, activeMonth);
-      const result = await Print.printToFileAsync({ html });
-      const importablePdfBase64 = await buildImportableBudgetPdfBase64(
-        await FileSystem.readAsStringAsync(result.uri, {
-          encoding: FileSystem.EncodingType.Base64,
-        }),
-        appState,
-        activeMonth,
-      );
-      await FileSystem.writeAsStringAsync(result.uri, importablePdfBase64, {
-        encoding: FileSystem.EncodingType.Base64,
-      });
-      await shareExportedFile(result.uri, {
-        dialogTitle: 'Export PDF report',
-        mimeType: 'application/pdf',
-        UTI: 'com.adobe.pdf',
-      });
-    } catch {
-      showToast({ message: 'The PDF report could not be created.', tone: 'error' });
-      void triggerHaptic('error');
-    }
-  };
-
-  const importPdfBudgetFile = async (uri: string) => {
-    const base64Content = await FileSystem.readAsStringAsync(uri, {
-      encoding: FileSystem.EncodingType.Base64,
-    });
-    const appPdfState = await importBudgetPdfBase64(base64Content, new Date());
-
-    if (appPdfState) {
-      return {
-        state: appPdfState,
-        message: 'Budget data was restored from the app-generated PDF report.',
-      };
-    }
-    let extractedText = '';
-
-    if (isPdfTextExtractAvailable()) {
-      try {
-        extractedText = await extractPdfText(uri);
-      } catch {
-        extractedText = '';
-      }
-    }
-
-    if (!extractedText.trim()) {
-      extractedText = await extractPdfTextWithPdfJs(uri);
-    }
-
-    const importedState = importISaveMoneyPdfText(extractedText, new Date());
-
-    if (!importedState) {
-      return null;
-    }
-
-    return {
-      state: importedState,
-      message: 'Budget data was imported from the iSaveMoney PDF export.',
-    };
-  };
 
   const importDataFile = async () => {
     try {
@@ -5195,27 +4906,18 @@ export default function App() {
       let normalized: BudgetAppState | null = null;
       let successMessage = 'Your budget data has been restored from the JSON backup.';
 
-      if (extension === 'pdf' || asset.mimeType === 'application/pdf') {
-        const pdfImport = await importPdfBudgetFile(asset.uri);
-        normalized = pdfImport?.state ?? null;
-        successMessage = pdfImport?.message ?? successMessage;
-      } else if (extension === 'json' || asset.mimeType === 'application/json') {
+      if (extension === 'json' || asset.mimeType === 'application/json') {
         const fileContent = await FileSystem.readAsStringAsync(asset.uri);
         normalized = normalizeBudgetAppState(JSON.parse(fileContent), new Date());
       } else if (extension === 'csv' || asset.mimeType === 'text/csv') {
         const fileContent = await FileSystem.readAsStringAsync(asset.uri);
         normalized = importLedgerCsv(fileContent, new Date());
-      } else if (extension === 'xlsx' || extension === 'xls') {
-        const fileContent = await FileSystem.readAsStringAsync(asset.uri, {
-          encoding: FileSystem.EncodingType.Base64,
-        });
-        normalized = importWorkbookBase64(fileContent, new Date());
       }
 
       if (!normalized) {
         showToast({
           message:
-            'That file could not be read. Use a Budget Buddy JSON backup, CSV ledger, XLSX workbook, an app-generated PDF report, or an iSaveMoney digital PDF export.',
+            'That file could not be read. Use a Budget Buddy JSON backup or CSV ledger export.',
           tone: 'error',
         });
         void triggerHaptic('error');
@@ -5246,36 +4948,12 @@ export default function App() {
 
   const exportActions = [
     {
-      key: 'pdf',
-      badge: 'PDF',
-      title: 'PDF report',
-      description: 'Best for sharing a polished monthly summary.',
-      onPress: exportPdfReport,
-      primary: true,
-    },
-    {
-      key: 'csv',
-      badge: 'CSV',
-      title: 'CSV ledger',
-      description: 'Open transactions and category rows in any spreadsheet.',
-      onPress: exportCsvLedger,
-      primary: false,
-    },
-    {
-      key: 'xlsx',
-      badge: 'XLSX',
-      title: 'Excel workbook',
-      description: 'Keep sheets, tabs, and a richer workbook structure.',
-      onPress: exportWorkbook,
-      primary: false,
-    },
-    {
       key: 'json',
       badge: 'JSON',
-      title: 'Full backup',
-      description: 'Restore the whole app state later without losing structure.',
+      title: 'Backup',
+      description: 'Save your data for recovery or moving to another device.',
       onPress: exportJsonBackup,
-      primary: false,
+      primary: true,
     },
   ] as const;
 
@@ -6448,28 +6126,10 @@ export default function App() {
               </View>
             </View>
 
-            <View style={styles.homeMetricRow}>
-              <View style={styles.homeMetricCard}>
-                <View style={[styles.homeMetricIcon, { backgroundColor: currentTheme.successSurface }]}>
-                  <Text style={[styles.homeMetricIconText, { color: currentTheme.successText }]}>↓</Text>
-                </View>
-                <Text style={styles.homeMetricLabel}>Spent so far</Text>
-                <Text style={styles.homeMetricValue}>{formatCompactCurrency(totalSpent)}</Text>
-              </View>
-              <View style={styles.homeMetricCard}>
-                <View style={[styles.homeMetricIcon, { backgroundColor: currentTheme.warningSurface }]}>
-                  <Text style={[styles.homeMetricIconText, { color: currentTheme.warningText }]}>◎</Text>
-                </View>
-                <Text style={styles.homeMetricLabel}>Plan used</Text>
-                <Text style={styles.homeMetricValue}>{Math.round(clamp(monthlyProgress) * 100)}%</Text>
-              </View>
-            </View>
-
             <View style={styles.homePlanSection}>
               <View style={styles.homeSectionHeadingRow}>
                 <View>
-                  <Text style={styles.settingsGroupLabel}>YOUR PLAN</Text>
-                  <Text style={styles.homeSectionTitle}>Categories at a glance</Text>
+                  <Text style={styles.homeSectionTitle}>Categories</Text>
                 </View>
                 <Pressable onPress={openPlanCategories}>
                   <Text style={styles.homePlanLinkText}>Edit plan</Text>
@@ -6550,8 +6210,7 @@ export default function App() {
             <View style={styles.homePlanSection}>
               <View style={styles.homeSectionHeadingRow}>
                 <View>
-                  <Text style={styles.settingsGroupLabel}>RECENT ACTIVITY</Text>
-                  <Text style={styles.homeSectionTitle}>Latest entries</Text>
+                  <Text style={styles.homeSectionTitle}>Recent activity</Text>
                 </View>
                 <Pressable onPress={() => navigateToScreen('spend')}>
                   <Text style={styles.homePlanLinkText}>See all</Text>
@@ -7426,15 +7085,6 @@ export default function App() {
           )}
         </View>
       )}
-
-      {/* Receipt Scanner Button */}
-      <Pressable
-        style={styles.receiptScannerButton}
-        onPress={() => setShowReceiptScanner(true)}
-      >
-        <Text style={styles.receiptScannerIcon}>📸</Text>
-        <Text style={styles.receiptScannerText}>Scan Receipt</Text>
-      </Pressable>
 
       {/* Budget Alerts */}
       {budgetAlerts.length > 0 && showBudgetAlerts && (
@@ -10371,14 +10021,6 @@ export default function App() {
 
         {activeScreen === 'settings' ? renderSettingsScreen() : null}
       </ScrollView>
-      {showConfetti && (
-        <ConfettiCannon
-          count={200}
-          origin={{ x: width / 2, y: -20 }}
-          fadeOut={true}
-          onAnimationEnd={() => setShowConfetti(false)}
-        />
-      )}
       <Modal
         animationType="fade"
         transparent
@@ -17615,25 +17257,6 @@ const createStyles = (
       marginBottom: spacing.sm,
       fontWeight: '500',
       lineHeight: 18,
-    },
-    receiptScannerButton: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'center',
-      backgroundColor: '#1f5f4f',
-      marginHorizontal: spacing.md,
-      marginBottom: spacing.lg,
-      paddingVertical: spacing.md,
-      borderRadius: 12,
-      gap: spacing.sm,
-    },
-    receiptScannerIcon: {
-      fontSize: 20,
-    },
-    receiptScannerText: {
-      color: '#ffffff',
-      fontSize: 14,
-      fontWeight: '700',
     },
   });
 };

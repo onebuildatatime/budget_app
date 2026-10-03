@@ -27,21 +27,15 @@
     "expo-file-system": "~57.0.7",
     "expo-font": "~57.0.4",
     "expo-haptics": "~57.0.3",
-    "expo-pdf-text-extract": "^1.0.1",
     "expo-print": "~57.0.2",
     "expo-sharing": "~57.0.22",
     "expo-status-bar": "~57.0.1",
-    "firebase": "^12.11.0",
-    "pdf-lib": "^1.17.1",
-    "pdfjs-dist": "^3.11.174",
     "react": "19.2.3",
     "react-dom": "19.2.3",
     "react-native": "0.86.3",
-    "react-native-confetti-cannon": "^1.5.2",
     "react-native-safe-area-context": "~5.7.0",
     "react-native-web": "^0.21.0",
     "typescript": "~5.9.2",
-    "xlsx": "^0.18.5",
     "zustand": "^5.0.12"
   },
   "devDependencies": {
@@ -52,14 +46,7 @@
   "expo": {
     "doctor": {
       "reactNativeDirectoryCheck": {
-        "exclude": [
-          "expo-pdf-text-extract",
-          "firebase",
-          "pdf-lib",
-          "pdfjs-dist",
-          "react-native-confetti-cannon",
-          "xlsx"
-        ]
+        "exclude": []
       }
     }
   }
