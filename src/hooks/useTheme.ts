@@ -1,14 +1,14 @@
 import { useMemo } from 'react';
 import { useBudgetStore } from '../store/useBudgetStore';
-import { getTheme, commonStyles } from '../styles/theme';
+import { appThemes, type AppTheme } from '../../budgetModel';
 
-export const useTheme = () => {
+/**
+ * Returns the current app theme colors for styling screens
+ */
+export const useTheme = (): AppTheme => {
   const appThemeId = useBudgetStore((state) => state.preferences.appThemeId);
 
-  const theme = useMemo(() => getTheme(appThemeId), [appThemeId]);
+  const theme = useMemo(() => appThemes[appThemeId], [appThemeId]);
 
-  return {
-    theme,
-    styles: commonStyles,
-  };
+  return theme;
 };
