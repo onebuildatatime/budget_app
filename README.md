@@ -1,140 +1,70 @@
-# Budget Buddy (Mobile App)
+# Budget Buddy
 
-Budget Buddy is a simple Expo React Native app to help users track monthly budgets by category.
+A calm, local-first budgeting app for iPhone and Android, built with Expo and React Native.
 
 ## App identity
 
 - App name: `Budget Buddy`
-- Expo slug: `budget-buddy`
-- Expo owner: `rahul0083.be`
-- iOS bundle ID: `com.rahulkumar.budgetbuddy`
-- Android package: `com.rahulkumar.budgetbuddy`
+- Expo slug: `budget-buddy` (owner `rahul0083.be`)
+- iOS bundle ID / Android package: `com.rahulkumar.budgetbuddy`
 - URL scheme: `budgetbuddy`
 
 ## Features
 
-- Set a monthly budget limit per category
-- Add, edit and remove expense entries
-- Add expenses from inside a category with amount, description, date, and optional subcategory
-- Optionally assign part of a category budget to each subcategory and track its spent and remaining amounts
-- View planned, spent, and remaining totals per category
-- Monthly summary and simple charts
-- Local-first storage with manual import and export
+- **Guided setup** for a monthly budget (50/30/20 starter, copy existing, or empty) or a trip/event budget with a date range.
+- **Several budgets side by side**, each with its own currency. Trips can show amounts in a home currency using a rate you set.
+- **Monthly plans**: income, categories grouped into Needs / Wants / Savings with targets, optional subcategory amounts.
+- **Fast entry**: amount pad, category and subcategory chips, account, note, date. Transactions can repeat monthly.
+- **Automatic month rollover**: when a month starts, its budget and repeating items are copied from the previous month.
+- **Alerts**: an in-app banner when a category passes 85% or goes over budget, plus an optional daily reminder notification.
+- **Goals**: categories or subcategories can pay into a goal automatically.
+- **Trends**: spent vs planned by month, changes against last month, spending share by category, and daily spending for trips.
+- **Data safety**: automatic daily backups (Files app), full backup/restore, CSV export.
+- **Privacy**: no account, no servers, optional Face ID / Touch ID lock.
+- Light and dark mode, and dates and numbers in the phone's locale.
 
-## Expense-entry design
+## Project structure
 
-Expense entry uses a compact receipt-style flow designed for quick mobile use. The amount sits on an open input line, followed by one grouped list with a placeholder-led description, calendar date, and single-value subcategory or account rows that reveal choices only when tapped. Repeat next month is a small checkbox, and the amount-confirming action stays fixed at the bottom of the sheet. The keyboard Done action can also save a valid entry. Opening the form from a category keeps that category and its current spent-of-planned context visible; opening it from a subcategory selects both automatically.
-
-## Category design pattern
-
-**Categories at a glance** is the reference pattern for category-related screens. Reuse its compact ledger rows, icon-and-name hierarchy, `amount of budget spent` wording, right-aligned remaining amount, visible progress bar, subtle dividers, and low use of separate cards. Category detail and Plan should feel like deeper versions of this same pattern, with actions kept close to the item they affect.
-
-Subcategory budgets are optional allocations within the parent category budget. Their combined planned amounts cannot exceed the parent category amount. Existing subcategories without an allocation remain valid and show spending without a progress target.
-
-Subcategories can be deleted from the category workspace. Deletion releases their assigned budget and removes the subcategory label from attached expenses without deleting those expenses.
-
-## Architecture
-
-### App Structure
-
-![Architecture Diagram](./docs/diagrams/architecture.svg)
-
-The app is built in three layers:
-- **UI**: React Native components (Dashboard, Categories, Transactions, Settings)
-- **Data**: Business logic and state management (Budgets, Transactions, Months)
-- **Storage**: Local AsyncStorage with user-controlled file import and export
-
-### Budget Workflow
-
-![Budget Workflow](./docs/diagrams/workflow.svg)
-
-Users follow this monthly cycle:
-1. Set a budget limit for the month
-2. Create budget categories (Needs, Wants, Savings)
-3. Log daily expenses
-4. Review spending patterns
-5. Adjust if overspending
-6. Roll over to next month
-
-See the [UI and brand redesign record](./docs/UI_REDESIGN.md) and [architecture diagrams](./docs/DIAGRAMS.md) for more details.
+```
+App.tsx, AppNavigator.tsx   entry point, tab bar + screen stack, onboarding, lock, rollover, auto-backup
+budgetModel.ts              core types and money/month helpers
+src/store/                  Zustand store persisted to AsyncStorage (multi-budget aware)
+src/logic/                  pure, unit-tested logic: budgets, rollover, goals, backup/CSV, trends, alerts, periods
+                            + thin native wrappers (files.ts, device.ts)
+src/screens/                screens and sheets
+src/ui/                     design system: theme tokens, primitives, tab bar, sheets, pickers, toast
+tests/                      node:test suites (`npm test`)
+```
 
 ## Getting started
 
-Prerequisites:
-
-- Node.js 22.13+ and npm
-- Xcode for native iOS simulator/device builds
-
-Install dependencies:
+Prerequisites: Node.js 22.13+, npm, Xcode (for iOS builds).
 
 ```bash
 npm install
+npm run ios                          # build and install the development app (again after native dependency changes)
+npm run start -- --dev-client        # start Metro, then open the installed Budget Buddy dev app
 ```
 
-1. Build and install the native development app once (or after native dependency changes):
+Expo Go is not used for this project. The `ios/` folder is committed with a custom startup fix, so don't regenerate it with `expo prebuild`. Edit `ios/BudgetBuddy/Info.plist` directly and run `pod install` after adding native modules.
 
-   ```bash
-   npm run ios
-   ```
-
-2. Start Metro for the development client:
-
-   ```bash
-   npm run start -- --dev-client
-   ```
-
-3. Open the installed Budget Buddy development app. Expo Go is not used for this project.
-
-## Type checking
+## Checks
 
 ```bash
-npm run typecheck
+npm run typecheck   # TypeScript
+npm test            # logic tests
+npm run check       # both
 ```
 
-## Local release checks
+## Release (iOS)
 
 ```bash
-npx expo-doctor
-npx expo export --platform ios --output-dir .expo-export-ios-check
-rm -rf .expo-export-ios-check
+npm run build:ios    # EAS production build
+npm run submit:ios   # upload the latest build to App Store Connect
 ```
+
+Store listing text, privacy answers and the submission checklist are in [APP_STORE_METADATA.md](./APP_STORE_METADATA.md). The privacy policy and support page are [PRIVACY.md](./PRIVACY.md) and [SUPPORT.md](./SUPPORT.md). Both need hosting at public URLs for App Store Connect.
 
 ## Data and privacy
 
-- The release app stores budget data locally on the device.
-- No account or subscription is required.
-- Users can create manual backups through the import/export tools.
-- Uninstalling the app can remove data that was not exported.
-
-## Scripts
-
-- `npm start` — Start the Expo development server
-- `npm run android` — Run on Android emulator/device (if configured)
-- `npm run ios` — Run on iOS simulator (macOS only)
-- `npm run typecheck` — Run TypeScript type checks (if project uses TypeScript)
-
-## iOS release (example)
-
-```bash
-npm run build:ios
-npm run submit:ios
-```
-
-Before submitting to the App Store, ensure:
-
-- App Store Connect app created
-- App price set to Free with no in-app purchases
-- App icons and screenshots prepared
-- Privacy/support URLs and App Store privacy details provided
-
-## Contributing
-
-- [APP_STORE_METADATA.md](./APP_STORE_METADATA.md)
-- [PRIVACY.md](./PRIVACY.md)
-- [SUPPORT.md](./SUPPORT.md)
-
-Contributions, bug reports and feature requests are welcome. Please open an issue or submit a PR.
-
-## License
-
-This project is provided under the MIT License. See LICENSE for details.
+All data is stored on the device. Nothing is uploaded, and no account is needed. See [PRIVACY.md](./PRIVACY.md).

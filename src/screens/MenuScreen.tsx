@@ -1,5 +1,5 @@
-import React, { useState, type ReactNode } from 'react';
-import { View, Text, ScrollView, Pressable, StyleSheet } from 'react-native';
+import React, { useEffect, useState, type ReactNode } from 'react';
+import { View, Text, ScrollView, Pressable, Switch, StyleSheet } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import { useBudgetStore, useActiveBook } from '../store/useBudgetStore';
 import { appThemeOrder, appThemes, currencyOptions, getMonthLabel } from '../../budgetModel';
@@ -8,6 +8,9 @@ import { materializeBooks } from '../logic/books';
 import { pickTextFile, shareTextFile } from '../logic/files';
 import { formatTripRange, toDateKey } from '../logic/period';
 import { triggerHaptic } from '../utils/haptics';
+import { biometricLabel, canUseLock, cancelDailyReminder, isNative, scheduleDailyReminder, unlock } from '../logic/device';
+import { deviceLocale } from '../logic/locale';
+import { fromDateKey } from '../logic/period';
 import { usePalette, type as t, space } from '../ui/theme';
 import { Screen, LargeTitle, SectionLabel, Divider, Button } from '../ui/primitives';
 import { Sheet } from '../ui/Sheet';
@@ -44,6 +47,13 @@ export function MenuScreen({
   const preferences = useBudgetStore((s) => s.preferences);
   const updateState = useBudgetStore((s) => s.updateState);
   const restoreBackup = useBudgetStore((s) => s.restoreBackup);
+  const settings = useBudgetStore((s) => s.settings);
+  const updateSettings = useBudgetStore((s) => s.updateSettings);
+  const [lockLabel, setLockLabel] = useState('Face ID');
+
+  useEffect(() => {
+    if (isNative) biometricLabel().then(setLockLabel);
+  }, []);
   const currencyLabel = currencyOptions.find((o) => o.code === preferences.currencyCode)?.label;
   const isTrip = book?.kind === 'trip';
   const budgetName = book?.name ?? 'Budget';
@@ -83,6 +93,14 @@ export function MenuScreen({
       if (text !== null) setPending(parseBackup(text));
     });
 
+  const changeReminderTime = (deltaMinutes: number) =>
+    run(async () => {
+      const total = (settings.reminder.hour * 60 + settings.reminder.minute + deltaMinutes + 24 * 60) % (24 * 60);
+      const reminder = { enabled: true, hour: Math.floor(total / 60), minute: total % 60 };
+      updateSettings({ reminder });
+      await scheduleDailyReminder(reminder.hour, reminder.minute);
+    });
+
   const pendingStats = pending && {
     budgets: pending.budgets.length,
     months: pending.budgets.reduce((n, b) => n + b.months.length, 0),
@@ -118,7 +136,7 @@ export function MenuScreen({
           <>
             <Row
               icon="sliders"
-              label={isTrip ? 'Edit trip budget' : `Edit ${getMonthLabel(monthId, 'en-US')}`}
+              label={isTrip ? 'Edit trip budget' : `Edit ${getMonthLabel(monthId, deviceLocale)}`}
               detail={isTrip ? 'Total, categories and subcategories' : 'Income, categories and subcategories'}
               onPress={onEditBudget}
             />
@@ -165,6 +183,89 @@ export function MenuScreen({
         <Text style={[t.caption, styles.footnote, { color: p.textTertiary }]}>
           Your data is stored only on this phone. Back up regularly so you can restore it on a new one.
         </Text>
+
+        <SectionLabel>Preferences</SectionLabel>
+        {!isNative && (
+          <Text style={[t.caption, styles.footnote, { color: p.textTertiary, paddingTop: 0, paddingBottom: space.sm }]}>
+            Reminders, app lock and automatic backups work in the iPhone and Android app.
+          </Text>
+        )}
+        <SwitchRow
+          icon="bell"
+          label="Daily reminder"
+          detail={settings.reminder.enabled ? `Every day at ${timeLabel(settings.reminder.hour, settings.reminder.minute)}` : 'A nudge to log what you spent'}
+          value={settings.reminder.enabled}
+          disabled={!isNative}
+          onChange={(on) =>
+            run(async () => {
+              if (!on) {
+                await cancelDailyReminder();
+                updateSettings({ reminder: { ...settings.reminder, enabled: false } });
+                return;
+              }
+              const ok = await scheduleDailyReminder(settings.reminder.hour, settings.reminder.minute);
+              if (!ok) throw new Error('Allow notifications for Budget Buddy in your phone settings to get reminders.');
+              updateSettings({ reminder: { ...settings.reminder, enabled: true } });
+            })
+          }
+        />
+        {settings.reminder.enabled && (
+          <View style={styles.timeRow}>
+            <Pressable
+              accessibilityLabel="Earlier"
+              hitSlop={10}
+              onPress={() => changeReminderTime(-30)}
+              style={[styles.timeButton, { backgroundColor: p.fill }]}
+            >
+              <Feather name="minus" size={16} color={p.text} />
+            </Pressable>
+            <Text style={[t.bodyStrong, { color: p.text, minWidth: 90, textAlign: 'center' }]}>
+              {timeLabel(settings.reminder.hour, settings.reminder.minute)}
+            </Text>
+            <Pressable
+              accessibilityLabel="Later"
+              hitSlop={10}
+              onPress={() => changeReminderTime(30)}
+              style={[styles.timeButton, { backgroundColor: p.fill }]}
+            >
+              <Feather name="plus" size={16} color={p.text} />
+            </Pressable>
+          </View>
+        )}
+        <Divider inset={space.xl + 32} />
+        <SwitchRow
+          icon="lock"
+          label={`Lock with ${lockLabel}`}
+          detail="Asks when you open the app"
+          value={settings.lock}
+          disabled={!isNative}
+          onChange={(on) =>
+            run(async () => {
+              if (on) {
+                if (!(await canUseLock())) throw new Error(`Set up ${lockLabel} or a passcode on your phone first.`);
+                if (!(await unlock())) return;
+              }
+              updateSettings({ lock: on });
+            })
+          }
+        />
+        <Divider inset={space.xl + 32} />
+        <SwitchRow
+          icon="archive"
+          label="Automatic backups"
+          detail={
+            settings.autoBackup
+              ? `Daily, last 7 kept in Files › Budget Buddy › Backups${
+                  settings.lastAutoBackup
+                    ? `. Last: ${fromDateKey(settings.lastAutoBackup).toLocaleDateString(deviceLocale, { month: 'short', day: 'numeric' })}`
+                    : ''
+                }`
+              : 'Off'
+          }
+          value={settings.autoBackup}
+          disabled={!isNative}
+          onChange={(on) => updateSettings({ autoBackup: on })}
+        />
 
         <SectionLabel>Appearance</SectionLabel>
         <View style={styles.swatches}>
@@ -218,6 +319,43 @@ export function MenuScreen({
   );
 }
 
+const timeLabel = (hour: number, minute: number) =>
+  new Date(2026, 0, 1, hour, minute).toLocaleTimeString(deviceLocale, { hour: 'numeric', minute: '2-digit' });
+
+function SwitchRow({
+  icon,
+  label,
+  detail,
+  value,
+  disabled,
+  onChange,
+}: {
+  icon: keyof typeof Feather.glyphMap;
+  label: string;
+  detail?: string;
+  value: boolean;
+  disabled?: boolean;
+  onChange: (value: boolean) => void;
+}) {
+  const p = usePalette();
+  return (
+    <View style={[styles.row, disabled && { opacity: 0.5 }]}>
+      <Feather name={icon} size={18} color={p.textSecondary} style={{ width: 20 }} />
+      <View style={{ flex: 1 }}>
+        <Text style={[t.body, { color: p.text }]}>{label}</Text>
+        {detail && <Text style={[t.caption, { color: p.textSecondary, marginTop: 1 }]}>{detail}</Text>}
+      </View>
+      <Switch
+        value={value}
+        disabled={disabled}
+        onValueChange={onChange}
+        trackColor={{ true: p.accent, false: p.hairline }}
+        accessibilityLabel={label}
+      />
+    </View>
+  );
+}
+
 function Row({
   icon,
   label,
@@ -261,4 +399,12 @@ const styles = StyleSheet.create({
   swatchRing: { width: 40, height: 40, borderRadius: 20, borderWidth: 2, alignItems: 'center', justifyContent: 'center' },
   swatch: { width: 28, height: 28, borderRadius: 14 },
   sheet: { paddingHorizontal: space.xl, paddingTop: space.sm, paddingBottom: space.md },
+  timeRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: space.md,
+    paddingLeft: space.xl + 32,
+    paddingBottom: space.md,
+  },
+  timeButton: { width: 32, height: 32, borderRadius: 16, alignItems: 'center', justifyContent: 'center' },
 });

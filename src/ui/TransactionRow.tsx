@@ -3,6 +3,7 @@ import { View, Text, Pressable, StyleSheet } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import { currency, type Transaction } from '../../budgetModel';
 import { usePalette, type as t, space } from './theme';
+import { deviceLocale } from '../logic/locale';
 
 export function TransactionRow({
   transaction,
@@ -21,7 +22,7 @@ export function TransactionRow({
   const income = transaction.kind === 'income';
   const note = transaction.note?.trim();
   const title = note || (income ? 'Income' : transaction.subcategory || categoryName);
-  const date = new Date(transaction.happenedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  const date = new Date(transaction.happenedAt).toLocaleDateString(deviceLocale, { month: 'short', day: 'numeric' });
   const context = income
     ? null
     : note

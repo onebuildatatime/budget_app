@@ -16,20 +16,43 @@ import {
   switchBook,
   type BudgetBook,
   type BudgetKind,
+  type Conversion,
   type TripDates,
 } from '../logic/books';
 import type { BackupData } from '../logic/backup';
 
-export type { BudgetBook, BudgetKind, TripDates };
+export type { BudgetBook, BudgetKind, Conversion, TripDates };
 export const getBudgetMonths = getBookMonths;
 
-type NewBook = { name: string; currencyCode: string; months: MonthRecord[]; kind: BudgetKind; trip?: TripDates };
+type NewBook = {
+  name: string;
+  currencyCode: string;
+  months: MonthRecord[];
+  kind: BudgetKind;
+  trip?: TripDates;
+  conversion?: Conversion;
+};
+
+export type AppSettings = {
+  reminder: { enabled: boolean; hour: number; minute: number };
+  lock: boolean;
+  autoBackup: boolean;
+  lastAutoBackup?: string;
+};
+
+const defaultSettings: AppSettings = {
+  reminder: { enabled: false, hour: 20, minute: 0 },
+  lock: false,
+  autoBackup: true,
+};
 
 interface BudgetState extends BudgetAppState {
   budgets: BudgetBook[];
   activeBudgetId: string;
   /** False only on a brand-new install, until the first budget is set up. */
   onboarded: boolean;
+  settings: AppSettings;
+  updateSettings: (patch: Partial<AppSettings>) => void;
   setMonths: (months: MonthRecord[]) => void;
   setAccounts: (accounts: BankAccount[]) => void;
   setGoals: (goals: Goal[]) => void;
@@ -37,7 +60,10 @@ interface BudgetState extends BudgetAppState {
   updateState: (partial: Partial<BudgetAppState>) => void;
   switchBudget: (id: string) => void;
   createBudget: (book: NewBook) => void;
-  updateBudget: (id: string, patch: { name: string; currencyCode: string; trip?: TripDates }) => void;
+  updateBudget: (
+    id: string,
+    patch: { name: string; currencyCode: string; trip?: TripDates; conversion?: Conversion | null },
+  ) => void;
   deleteBudget: (id: string) => void;
   /** Replaces everything with a single first budget (onboarding). */
   startWith: (book: NewBook, accounts: BankAccount[]) => void;
@@ -56,6 +82,8 @@ export const useBudgetStore = create<BudgetState>()(
         budgets: [{ id: DEFAULT_BUDGET_ID, name: 'Personal', currencyCode: initial.preferences.currencyCode, months: [] }],
         activeBudgetId: DEFAULT_BUDGET_ID,
         onboarded: false,
+        settings: defaultSettings,
+        updateSettings: (patch) => set((state) => ({ settings: { ...state.settings, ...patch } })),
         setMonths: (months) => set({ months, updatedAt: Date.now() }),
         setAccounts: (accounts) => set({ accounts, updatedAt: Date.now() }),
         setGoals: (goals) => set({ goals, updatedAt: Date.now() }),
@@ -73,9 +101,15 @@ export const useBudgetStore = create<BudgetState>()(
           get().switchBudget(id);
         },
 
-        updateBudget: (id, { name, currencyCode, trip }) =>
+        updateBudget: (id, { name, currencyCode, trip, conversion }) =>
           set((state) => ({
-            budgets: state.budgets.map((b) => (b.id === id ? { ...b, name, currencyCode, ...(trip ? { trip } : {}) } : b)),
+            budgets: state.budgets.map((b) => {
+              if (b.id !== id) return b;
+              const next: BudgetBook = { ...b, name, currencyCode, ...(trip ? { trip } : {}) };
+              if (conversion === null) delete next.conversion;
+              else if (conversion) next.conversion = conversion;
+              return next;
+            }),
             ...(id === state.activeBudgetId ? { preferences: { ...state.preferences, currencyCode } } : {}),
             updatedAt: Date.now(),
           })),

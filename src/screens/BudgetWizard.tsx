@@ -13,11 +13,13 @@ import {
 import { buildTemplateCategories, buildTripCategories } from '../budgetTemplate';
 import { copyMonth } from '../logic/rollover';
 import { formatTripRange, tripLength } from '../logic/period';
-import type { BudgetKind, TripDates } from '../logic/books';
+import type { BudgetKind, Conversion, TripDates } from '../logic/books';
+import { ConversionField, parseRate } from '../ui/ConversionField';
 import { usePalette, type as t, space } from '../ui/theme';
 import { Button, Chip } from '../ui/primitives';
 import { DateRangePicker } from '../ui/DateRangePicker';
 import { cleanAmountInput, toAmount } from './CategorySheet';
+import { deviceLocale } from '../logic/locale';
 
 export type WizardResult = {
   name: string;
@@ -25,6 +27,7 @@ export type WizardResult = {
   months: MonthRecord[];
   kind: BudgetKind;
   trip?: TripDates;
+  conversion?: Conversion;
 };
 
 type Start = 'template' | 'copy' | 'empty';
@@ -66,6 +69,8 @@ export function BudgetWizard({
   const [amount, setAmount] = useState(copySource?.month.monthlyLimit ?? '');
   const [trip, setTrip] = useState<{ start: string | null; end: string | null }>({ start: null, end: null });
   const [start, setStart] = useState<Start>('template');
+  const [convert, setConvert] = useState(false);
+  const [rate, setRate] = useState('');
 
   const value = toAmount(amount);
   const tripDates: TripDates | null = trip.start && trip.end ? { start: trip.start, end: trip.end } : null;
@@ -100,6 +105,9 @@ export function BudgetWizard({
       months: [record],
       kind,
       ...(kind === 'trip' && tripDates ? { trip: tripDates } : {}),
+      ...(kind === 'trip' && convert && currencyCode !== defaultCurrency && parseRate(rate) > 0
+        ? { conversion: { currencyCode: defaultCurrency, rate: parseRate(rate) } }
+        : {}),
     });
   };
 
@@ -189,9 +197,27 @@ export function BudgetWizard({
             <Label>Currency</Label>
             <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chips}>
               {currencies.map((code) => (
-                <Chip key={code} label={code} selected={code === currencyCode} onPress={() => setCurrencyCode(code)} />
+                <Chip
+                  key={code}
+                  label={code}
+                  selected={code === currencyCode}
+                  onPress={() => setCurrencyCode(code)}
+                />
               ))}
             </ScrollView>
+
+            {kind === 'trip' && (
+              <ConversionField
+                tripCurrency={currencyCode}
+                homeCurrency={defaultCurrency}
+                enabled={convert}
+                rate={rate}
+                onChange={(on, r) => {
+                  setConvert(on);
+                  setRate(r);
+                }}
+              />
+            )}
 
             <Label>{kind === 'trip' ? 'Total budget for the trip' : 'Monthly take-home income'}</Label>
             <TextInput
@@ -209,7 +235,7 @@ export function BudgetWizard({
             )}
             {kind === 'monthly' && (
               <Text style={[t.caption, { color: p.textSecondary, marginTop: space.sm }]}>
-                What lands in your account each month after tax. Starts in {getMonthLabel(monthId, 'en-US')}.
+                What lands in your account each month after tax. Starts in {getMonthLabel(monthId, deviceLocale)}.
               </Text>
             )}
           </>
@@ -249,7 +275,7 @@ export function BudgetWizard({
                       selected={start === 'copy'}
                       onPress={() => setStart('copy')}
                       title={`Same categories as ${copySource.budgetName}`}
-                      detail={`${copySource.month.categories.length} categories from ${getMonthLabel(copySource.month.id, 'en-US')}.`}
+                      detail={`${copySource.month.categories.length} categories from ${getMonthLabel(copySource.month.id, deviceLocale)}.`}
                     />
                   )}
                   <StartCard

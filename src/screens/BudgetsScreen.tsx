@@ -12,6 +12,7 @@ import {
 } from '../../budgetModel';
 import { usePalette, type as t, space, toneColor } from '../ui/theme';
 import { Screen, Header, Divider, ProgressBar, Button } from '../ui/primitives';
+import { deviceLocale } from '../logic/locale';
 
 export function BudgetsScreen({
   viewingMonthId,
@@ -58,7 +59,7 @@ export function BudgetsScreen({
                 style={({ pressed }) => [styles.row, pressed && { backgroundColor: p.fill }]}
               >
                 <View style={styles.rowLine}>
-                  <Text style={[t.bodyStrong, { color: p.text, flex: 1 }]}>{getMonthLabel(m.id, 'en-US')}</Text>
+                  <Text style={[t.bodyStrong, { color: p.text, flex: 1 }]}>{getMonthLabel(m.id, deviceLocale)}</Text>
                   {m.id === currentMonthId && <Badge label="This month" color={p.accent} />}
                   {viewing && <Feather name="check" size={18} color={p.accent} />}
                 </View>

@@ -7,6 +7,7 @@ import { categoryChanges, categoryShares, dailyTotals, monthlyTotals } from '../
 import { tripPeriod } from '../logic/period';
 import { usePalette, type as t, space } from '../ui/theme';
 import { Screen, Header, SectionLabel, ProgressBar } from '../ui/primitives';
+import { deviceLocale } from '../logic/locale';
 
 const CHART_HEIGHT = 140;
 
@@ -27,7 +28,7 @@ export function TrendsScreen({
   const month = months.find((m) => m.id === monthId);
   const previous = months.find((m) => m.id === addMonths(monthId, -1));
   const fmt = (n: number) => currency(n, currencyCode);
-  const shortMonth = (id: string) => parseMonthId(id).toLocaleDateString('en-US', { month: 'short' });
+  const shortMonth = (id: string) => parseMonthId(id).toLocaleDateString(deviceLocale, { month: 'short' });
 
   if (!month) {
     return (
@@ -47,7 +48,7 @@ export function TrendsScreen({
 
   return (
     <Screen>
-      <Header title={trip ? `${book?.name} trends` : `Trends · ${getMonthLabel(monthId, 'en-US')}`} onBack={onBack} />
+      <Header title={trip ? `${book?.name} trends` : `Trends · ${getMonthLabel(monthId, deviceLocale)}`} onBack={onBack} />
       <ScrollView contentContainerStyle={{ paddingBottom: space.xxl }}>
         {!trip && (
           <>
@@ -123,7 +124,7 @@ export function TrendsScreen({
 
         {previous && !trip && (
           <>
-            <SectionLabel>{`Compared with ${getMonthLabel(previous.id, 'en-US')}`}</SectionLabel>
+            <SectionLabel>{`Compared with ${getMonthLabel(previous.id, deviceLocale)}`}</SectionLabel>
             {changes.length === 0 ? (
               <Text style={[t.caption, styles.hint, { color: p.textSecondary }]}>No changes yet.</Text>
             ) : (

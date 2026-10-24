@@ -10,6 +10,7 @@ import { Sheet } from '../ui/Sheet';
 import { Button, Chip } from '../ui/primitives';
 import { DateRangePicker } from '../ui/DateRangePicker';
 import { BudgetWizard } from './BudgetWizard';
+import { ConversionField, parseRate } from '../ui/ConversionField';
 
 type Mode = { kind: 'list' } | { kind: 'new' } | { kind: 'edit'; book: BudgetBook };
 
@@ -159,6 +160,12 @@ function EditBudget({ book, onDone }: { book: BudgetBook; onDone: () => void }) 
     end: book.trip?.end ?? null,
   });
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const otherCurrency = budgets.find((b) => b.id !== book.id && b.kind !== 'trip');
+  const homeCurrency =
+    book.conversion?.currencyCode ??
+    (otherCurrency ? (otherCurrency.id === activeBudgetId ? preferences.currencyCode : otherCurrency.currencyCode) : 'EUR');
+  const [convert, setConvert] = useState(!!book.conversion);
+  const [rate, setRate] = useState(book.conversion ? String(book.conversion.rate) : '');
 
   const currencies = featuredCurrencyCodes.includes(currencyCode)
     ? featuredCurrencyCodes
@@ -201,6 +208,19 @@ function EditBudget({ book, onDone }: { book: BudgetBook; onDone: () => void }) 
         Changing currency doesn't convert existing amounts.
       </Text>
 
+      {isTrip && (
+        <ConversionField
+          tripCurrency={currencyCode}
+          homeCurrency={homeCurrency}
+          enabled={convert}
+          rate={rate}
+          onChange={(on, r) => {
+            setConvert(on);
+            setRate(r);
+          }}
+        />
+      )}
+
       <View style={{ marginTop: space.xl }}>
         <Button
           label="Save"
@@ -210,6 +230,14 @@ function EditBudget({ book, onDone }: { book: BudgetBook; onDone: () => void }) 
               name: name.trim(),
               currencyCode,
               ...(isTrip && dates.start && dates.end ? { trip: { start: dates.start, end: dates.end } } : {}),
+              ...(isTrip
+                ? {
+                    conversion:
+                      convert && currencyCode !== homeCurrency && parseRate(rate) > 0
+                        ? { currencyCode: homeCurrency, rate: parseRate(rate) }
+                        : null,
+                  }
+                : {}),
             });
             onDone();
           }}

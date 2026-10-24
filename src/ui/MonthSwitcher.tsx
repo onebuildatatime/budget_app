@@ -3,6 +3,7 @@ import { View, Text, Pressable, StyleSheet } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import { addMonths, getMonthLabel } from '../../budgetModel';
 import { usePalette, type as t } from './theme';
+import { deviceLocale } from '../logic/locale';
 
 export function MonthSwitcher({
   monthId,
@@ -35,7 +36,7 @@ export function MonthSwitcher({
         style={styles.label}
         accessibilityLabel={onOpenList ? 'All months' : undefined}
       >
-        <Text style={[t.bodyStrong, { color: p.text }]}>{getMonthLabel(monthId, 'en-US')}</Text>
+        <Text style={[t.bodyStrong, { color: p.text }]}>{getMonthLabel(monthId, deviceLocale)}</Text>
         {onOpenList && <Feather name="chevron-down" size={16} color={p.textSecondary} />}
       </Pressable>
       {arrow('right')}

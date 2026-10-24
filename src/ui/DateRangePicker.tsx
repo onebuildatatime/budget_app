@@ -3,8 +3,14 @@ import { View, Text, Pressable, StyleSheet } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import { fromDateKey, toDateKey } from '../logic/period';
 import { usePalette, type as t } from './theme';
+import { deviceLocale, weekStartsOnSunday } from '../logic/locale';
 
-const WEEKDAYS = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
+// Narrow weekday names in the phone's language, starting on the locale's first day.
+const WEEKDAYS = Array.from({ length: 7 }, (_, i) =>
+  // Jan 4 2026 is a Sunday.
+  new Date(2026, 0, 4 + i + (weekStartsOnSunday ? 0 : 1)).toLocaleDateString(deviceLocale, { weekday: 'narrow' }),
+);
+
 
 /** Month calendar: first tap picks the start, second tap the end. */
 export function DateRangePicker({
@@ -23,7 +29,8 @@ export function DateRangePicker({
   const year = cursor.getFullYear();
   const month = cursor.getMonth();
   const daysInMonth = new Date(year, month + 1, 0).getDate();
-  const leading = (new Date(year, month, 1).getDay() + 6) % 7; // Monday-first
+  const firstWeekday = new Date(year, month, 1).getDay();
+  const leading = weekStartsOnSunday ? firstWeekday : (firstWeekday + 6) % 7;
   const cells: (number | null)[] = [
     ...Array.from({ length: leading }, () => null),
     ...Array.from({ length: daysInMonth }, (_, i) => i + 1),
@@ -45,7 +52,7 @@ export function DateRangePicker({
           <Feather name="chevron-left" size={20} color={p.textSecondary} />
         </Pressable>
         <Text style={[t.bodyStrong, { color: p.text }]}>
-          {cursor.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
+          {cursor.toLocaleDateString(deviceLocale, { month: 'long', year: 'numeric' })}
         </Text>
         <Pressable onPress={() => setCursor(new Date(year, month + 1, 1))} hitSlop={10} accessibilityLabel="Next month">
           <Feather name="chevron-right" size={20} color={p.textSecondary} />

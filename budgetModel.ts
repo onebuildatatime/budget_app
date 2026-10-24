@@ -1,3 +1,5 @@
+import { deviceLocale } from './src/logic/locale';
+
 export type ThemeId = 'citrus' | 'apricot' | 'clay' | 'sun' | 'ember';
 export type AppThemeId = 'indigo' | 'emerald' | 'slate' | 'cobalt' | 'breeze' | 'garden' | 'coral' | 'lavender' | 'serenity' | 'sage' | 'warmclay' | 'twilight';
 export type CurrencyCode = string;
@@ -1121,7 +1123,7 @@ export const getLocaleTag = (languageCode: LanguageCode = defaultLanguageCode) =
 export const currency = (
   value: number,
   currencyCode: CurrencyCode = defaultCurrencyCode,
-  locale = getLocaleTag(),
+  locale = deviceLocale,
 ) => {
   const fractionDigits = Math.abs(value - Math.round(value)) >= 0.01 ? 2 : 0;
 

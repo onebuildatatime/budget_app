@@ -1,9 +1,14 @@
-import React, { useEffect, useState } from 'react';
-import { BackHandler, View } from 'react-native';
+import React, { useEffect, useRef, useState } from 'react';
+import { AppState, BackHandler, View } from 'react-native';
 import { useBudgetStore, useActiveBook } from './src/store/useBudgetStore';
 import { rollForward } from './src/logic/rollover';
 import { applyGoalContribution } from './src/logic/goals';
 import { OnboardingScreen } from './src/screens/OnboardingScreen';
+import { LockScreen } from './src/screens/LockScreen';
+import { isNative, scheduleDailyReminder } from './src/logic/device';
+import { buildBackup } from './src/logic/backup';
+import { writeAutoBackup } from './src/logic/files';
+import { toDateKey } from './src/logic/period';
 import { TrendsScreen } from './src/screens/TrendsScreen';
 import { addMonths, getMonthId, type Transaction } from './budgetModel';
 import { HomeScreen } from './src/screens/HomeScreen';
@@ -20,6 +25,7 @@ import { CurrencySheet } from './src/screens/CurrencySheet';
 import { BudgetSwitcherSheet } from './src/screens/BudgetSwitcherSheet';
 import { TabBar, type TabName } from './src/ui/TabBar';
 import { usePalette } from './src/ui/theme';
+import { ToastHost } from './src/ui/Toast';
 
 type Route =
   | { name: 'BudgetEditor' }
@@ -40,6 +46,7 @@ export function AppNavigator() {
   const markOnboarded = useBudgetStore((s) => s.markOnboarded);
   const updateState = useBudgetStore((s) => s.updateState);
   const isTrip = useActiveBook()?.kind === 'trip';
+  const lockEnabled = useBudgetStore((s) => s.settings.lock) && isNative;
 
   const [hydrated, setHydrated] = useState(() => useBudgetStore.persist.hasHydrated());
   const [tab, setTab] = useState<TabName>('Home');
@@ -49,6 +56,8 @@ export function AppNavigator() {
   const [newBudgetFor, setNewBudgetFor] = useState<string | null>(null);
   const [currencyOpen, setCurrencyOpen] = useState(false);
   const [switcherOpen, setSwitcherOpen] = useState<false | 'list' | 'new'>(false);
+  const [locked, setLocked] = useState<boolean | null>(null);
+  const backgroundedAt = useRef<number | null>(null);
 
   const hasData =
     budgetCount > 1 ||
@@ -62,6 +71,36 @@ export function AppNavigator() {
     const unsubscribe = useBudgetStore.persist.onFinishHydration(() => setHydrated(true));
     if (useBudgetStore.persist.hasHydrated()) setHydrated(true);
     return unsubscribe;
+  }, [hydrated]);
+
+  // Lock on launch, and again after more than 15 seconds in the background.
+  useEffect(() => {
+    if (hydrated && locked === null) setLocked(lockEnabled);
+  }, [hydrated, locked, lockEnabled]);
+
+  useEffect(() => {
+    const sub = AppState.addEventListener('change', (next) => {
+      if (next === 'background') {
+        backgroundedAt.current = Date.now();
+        runAutoBackup();
+      } else if (next === 'active' && backgroundedAt.current !== null) {
+        const away = Date.now() - backgroundedAt.current;
+        backgroundedAt.current = null;
+        if (useBudgetStore.getState().settings.lock && isNative && away > 15000) setLocked(true);
+      }
+    });
+    return () => sub.remove();
+  }, []);
+
+  useEffect(() => {
+    if (hydrated && onboarded) runAutoBackup();
+  }, [hydrated, onboarded]);
+
+  // Re-arm the daily reminder on launch (e.g. after restoring a backup or reinstalling).
+  useEffect(() => {
+    if (!hydrated) return;
+    const { reminder } = useBudgetStore.getState().settings;
+    if (reminder.enabled) scheduleDailyReminder(reminder.hour, reminder.minute).catch(() => undefined);
   }, [hydrated]);
 
   // Installs from before onboarding existed already have data: never show them the welcome screen.
@@ -100,6 +139,8 @@ export function AppNavigator() {
 
   if (!hydrated || (!onboarded && hasData)) return <View style={{ flex: 1, backgroundColor: p.bg }} />;
   if (needsOnboarding) return <OnboardingScreen />;
+  if (locked === null) return <View style={{ flex: 1, backgroundColor: p.bg }} />;
+  if (locked) return <LockScreen onUnlocked={() => setLocked(false)} />;
 
   const monthIds = new Set(months.map((m) => m.id));
   const currentMonthId = getMonthId(new Date());
@@ -222,6 +263,7 @@ export function AppNavigator() {
         }}
       />
       <CurrencySheet visible={currencyOpen} onClose={() => setCurrencyOpen(false)} />
+      <ToastHost />
       <BudgetSwitcherSheet
         visible={switcherOpen !== false}
         startInNew={switcherOpen === 'new'}
@@ -230,4 +272,17 @@ export function AppNavigator() {
       />
     </View>
   );
+}
+
+/** Writes at most one automatic backup per day, when enabled. Never throws. */
+function runAutoBackup() {
+  const state = useBudgetStore.getState();
+  const today = toDateKey(new Date());
+  if (!isNative || !state.onboarded || !state.settings.autoBackup || state.settings.lastAutoBackup === today) return;
+  try {
+    writeAutoBackup(JSON.stringify(buildBackup(state)), today);
+    state.updateSettings({ lastAutoBackup: today });
+  } catch {
+    // A failed automatic backup must never interrupt the app; the next launch retries.
+  }
 }

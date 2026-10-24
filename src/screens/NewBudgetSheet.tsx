@@ -18,6 +18,7 @@ import { Sheet } from '../ui/Sheet';
 import { Button } from '../ui/primitives';
 import { MonthSwitcher } from '../ui/MonthSwitcher';
 import { cleanAmountInput, toAmount } from './CategorySheet';
+import { deviceLocale } from '../logic/locale';
 
 type Start = 'copy' | 'template' | 'empty';
 
@@ -81,7 +82,7 @@ export function NewBudgetSheet({
   const options: { value: Start; title: string; detail: string; hidden?: boolean }[] = [
     {
       value: 'copy',
-      title: source ? `Copy ${getMonthLabel(source.id, 'en-US')}` : 'Copy a month',
+      title: source ? `Copy ${getMonthLabel(source.id, deviceLocale)}` : 'Copy a month',
       detail: source
         ? `${source.categories.length} categories, ${currency(parseFloat(source.monthlyLimit), currencyCode)} income${
             recurringCount ? `, ${recurringCount} repeating ${recurringCount === 1 ? 'item' : 'items'}` : ''
@@ -113,7 +114,7 @@ export function NewBudgetSheet({
 
         {exists ? (
           <Text style={[t.body, { color: p.textSecondary, textAlign: 'center', marginVertical: space.lg }]}>
-            {getMonthLabel(monthId, 'en-US')} is already set up.
+            {getMonthLabel(monthId, deviceLocale)} is already set up.
           </Text>
         ) : (
           <>
@@ -164,7 +165,7 @@ export function NewBudgetSheet({
             <Button label="Open this month" onPress={() => onCreated(monthId, false)} />
           ) : (
             <Button
-              label={`Create ${getMonthLabel(monthId, 'en-US')}`}
+              label={`Create ${getMonthLabel(monthId, deviceLocale)}`}
               onPress={create}
               disabled={start !== 'copy' && incomeValue <= 0}
             />

@@ -8,6 +8,7 @@ import { Screen, LargeTitle, Segmented, Divider, Chip } from '../ui/primitives';
 import { MonthSwitcher } from '../ui/MonthSwitcher';
 import { TransactionRow } from '../ui/TransactionRow';
 import { BudgetPill } from '../ui/BudgetPill';
+import { deviceLocale } from '../logic/locale';
 
 type Sort = 'recent' | 'highest';
 
@@ -125,7 +126,7 @@ export function SpendScreen({
 function groupByDay(transactions: Transaction[]) {
   const groups = new Map<string, Transaction[]>();
   for (const tx of transactions) {
-    const label = new Date(tx.happenedAt).toLocaleDateString('en-US', {
+    const label = new Date(tx.happenedAt).toLocaleDateString(deviceLocale, {
       weekday: 'short',
       month: 'short',
       day: 'numeric',

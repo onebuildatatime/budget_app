@@ -3,19 +3,26 @@ import { View, Text, Pressable, ScrollView, TextInput, Switch, StyleSheet } from
 import { Feather } from '@expo/vector-icons';
 import { useBudgetStore, useActiveBook } from '../store/useBudgetStore';
 import { applyGoalContribution } from '../logic/goals';
+import { budgetAlert } from '../logic/alerts';
+import { useToast } from '../ui/Toast';
 import { clampToPeriod, addDays, isoForDay, monthPeriod, sameDay, tripPeriod } from '../logic/period';
 import { createId, currency, INCOME_CATEGORY_ID, type Transaction } from '../../budgetModel';
 import { triggerHaptic } from '../utils/haptics';
 import { usePalette, type as t, space } from '../ui/theme';
 import { Sheet } from '../ui/Sheet';
 import { Segmented, Chip, Button } from '../ui/primitives';
+import { decimalSeparator, deviceLocale } from '../logic/locale';
 
 type Kind = 'expense' | 'income';
 
 const KEYS = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '.', '0', 'del'] as const;
 
-// Hermes on iOS has no Intl.NumberFormat.formatToParts.
-const currencySymbol = (code: string) => currency(0, code).replace(/[\d.,\s ]/g, '') || code;
+// Hermes on iOS has no Intl.NumberFormat.formatToParts, so derive symbol and position from a sample.
+const currencyLayout = (code: string) => {
+  const sample = currency(1, code).trim();
+  const symbol = sample.replace(/[\d.,\s\u00a0\u202f]/g, '') || code;
+  return { symbol, before: sample.indexOf(symbol) === 0 };
+};
 
 const toAmountString = (n: number) => String(Math.round(n * 100) / 100);
 
@@ -84,7 +91,7 @@ export function AddTransactionSheet({
   const atEnd = sameDay(date, period.end);
   const dateLabel = sameDay(date, new Date())
     ? 'Today'
-    : date.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+    : date.toLocaleDateString(deviceLocale, { weekday: 'short', month: 'short', day: 'numeric' });
 
   const value = parseFloat(amount);
   const categoryValid = kind === 'income' || month?.categories.some((c) => c.id === categoryId);
@@ -135,6 +142,15 @@ export function AddTransactionSheet({
       transaction ?? undefined,
       next,
     );
+    const category = month?.categories.find((c) => c.id === next.categoryId);
+    if (category && next.kind === 'expense') {
+      const spentElsewhere = month!.transactions
+        .filter((x) => x.kind !== 'income' && x.categoryId === category.id && x.id !== next.id)
+        .reduce((sum, x) => sum + x.amount, 0);
+      const previous = transaction && transaction.categoryId === category.id && transaction.kind !== 'income' ? transaction.amount : 0;
+      const alert = budgetAlert(category.name, category.planned, spentElsewhere + previous, spentElsewhere + next.amount);
+      if (alert) useToast.getState().show(alert.message, alert.tone);
+    }
     triggerHaptic('success');
     onClose();
   };
@@ -181,9 +197,19 @@ export function AddTransactionSheet({
             numberOfLines={1}
             adjustsFontSizeToFit
           >
-            {currencySymbol(currencyCode)}
-            {amount || '0'}
+            {(() => {
+              const { symbol, before } = currencyLayout(currencyCode);
+              const [whole, fraction] = (amount || '0').split('.');
+              const grouped = Number(whole).toLocaleString(deviceLocale);
+              const shown = fraction === undefined ? grouped : `${grouped}${decimalSeparator}${fraction}`;
+              return before ? `${symbol}${shown}` : `${shown} ${symbol}`;
+            })()}
           </Text>
+          {trip && book?.conversion && value > 0 && (
+            <Text style={[t.caption, { color: p.textSecondary, marginTop: space.xs }]}>
+              ≈ {currency(value * book.conversion.rate, book.conversion.currencyCode)}
+            </Text>
+          )}
           <View style={styles.dateRow}>
             <Pressable
               onPress={() => setDate((d) => addDays(d, -1))}
@@ -286,7 +312,9 @@ export function AddTransactionSheet({
               {key === 'del' ? (
                 <Feather name="delete" size={22} color={p.text} />
               ) : (
-                <Text style={[t.title, { color: p.text, fontWeight: '400' }]}>{key}</Text>
+                <Text style={[t.title, { color: p.text, fontWeight: '400' }]}>
+                  {key === '.' ? decimalSeparator : key}
+                </Text>
               )}
             </Pressable>
           ))}

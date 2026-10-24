@@ -199,7 +199,7 @@ test('period helpers', () => {
   assert.equal(daysLeftInPeriod(nov, new Date(2026, 9, 30)), null);
   const trip = { start: '2026-12-20', end: '2027-01-05' };
   assert.equal(tripLength(trip), 17);
-  assert.equal(formatTripRange(trip), 'Dec 20, 2026 – Jan 5, 2027');
+  assert.equal(formatTripRange(trip, 'en-US'), 'Dec 20, 2026 – Jan 5, 2027');
 });
 
 test('trends: monthly totals, category changes and shares', async () => {
@@ -221,4 +221,16 @@ test('trends: monthly totals, category changes and shares', async () => {
   assert.equal(shares[0].share, 0.75);
   const days = dailyTotals(nov, { start: new Date(2026, 10, 4, 12), end: new Date(2026, 10, 6, 12) });
   assert.deepEqual(days.map((d) => d.spent), [0, 120, 0]);
+});
+
+test('budget alerts fire only when crossing 85% or 100%', async () => {
+  const { budgetAlert } = await import('../src/logic/alerts');
+  assert.equal(budgetAlert('Food', 100, 50, 80), null);
+  assert.match(budgetAlert('Food', 100, 80, 90)!.message, /90% of its budget/);
+  assert.equal(budgetAlert('Food', 100, 86, 95), null, 'already past 85%');
+  assert.equal(budgetAlert('Food', 100, 95, 101)!.tone, 'over');
+  assert.equal(budgetAlert('Food', 100, 50, 120)!.tone, 'over', 'jumping straight past 100% says over');
+  assert.equal(budgetAlert('Food', 100, 120, 130), null, 'already over');
+  assert.equal(budgetAlert('Food', 0, 0, 10), null, 'no budget');
+  assert.equal(budgetAlert('Food', 100, 90, 80), null, 'spending went down');
 });

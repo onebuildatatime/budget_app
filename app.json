@@ -7,7 +7,7 @@
     "version": "1.0.0",
     "scheme": "budgetbuddy",
     "orientation": "portrait",
-    "userInterfaceStyle": "light",
+    "userInterfaceStyle": "automatic",
     "icon": "./assets/icon-v3.png",
     "splash": {
       "image": "./assets/splash.png",
@@ -30,7 +30,10 @@
       "buildNumber": "1",
       "infoPlist": {
         "LSApplicationCategoryType": "public.app-category.finance",
-        "ITSAppUsesNonExemptEncryption": false
+        "ITSAppUsesNonExemptEncryption": false,
+        "NSFaceIDUsageDescription": "Budget Buddy uses Face ID to keep your budget private.",
+        "UIFileSharingEnabled": true,
+        "LSSupportsOpeningDocumentsInPlace": true
       }
     },
     "android": {
@@ -58,6 +61,13 @@
       "expo-sharing",
       "expo-font",
       "expo-status-bar",
+      "expo-notifications",
+      [
+        "expo-local-authentication",
+        {
+          "faceIDPermission": "Budget Buddy uses Face ID to keep your budget private."
+        }
+      ],
       [
         "expo-build-properties",
         {

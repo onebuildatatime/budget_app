@@ -17,6 +17,7 @@ import { Screen, SectionLabel, ProgressBar, Button } from '../ui/primitives';
 import { MonthSwitcher } from '../ui/MonthSwitcher';
 import { TransactionRow } from '../ui/TransactionRow';
 import { BudgetPill } from '../ui/BudgetPill';
+import { deviceLocale } from '../logic/locale';
 
 export function HomeScreen({
   monthId,
@@ -68,7 +69,7 @@ export function HomeScreen({
             <Feather name="pie-chart" size={28} color={p.textSecondary} />
           </View>
           <Text style={[t.title, { color: p.text, textAlign: 'center' }]}>
-            {month ? 'No categories yet' : `${getMonthLabel(monthId, 'en-US')} isn't set up yet`}
+            {month ? 'No categories yet' : `${getMonthLabel(monthId, deviceLocale)} isn't set up yet`}
           </Text>
           <Text style={[t.body, { color: p.textSecondary, textAlign: 'center', marginTop: space.sm }]}>
             {month
@@ -79,7 +80,7 @@ export function HomeScreen({
             {month ? (
               <Button label="Set up categories" onPress={onEditBudget} />
             ) : (
-              <Button label={`Set up ${getMonthLabel(monthId, 'en-US')}`} onPress={onCreateBudget} />
+              <Button label={`Set up ${getMonthLabel(monthId, deviceLocale)}`} onPress={onCreateBudget} />
             )}
           </View>
         </View>
@@ -122,6 +123,11 @@ export function HomeScreen({
           <Text style={[t.display, { color: left >= 0 ? p.text : p.negative, marginVertical: space.xs }]}>
             {currency(Math.abs(left), currencyCode)}
           </Text>
+          {trip && book?.conversion && (
+            <Text style={[t.body, { color: p.textSecondary }]}>
+              ≈ {currency(Math.abs(left) * book.conversion.rate, book.conversion.currencyCode)}
+            </Text>
+          )}
           <View style={{ marginTop: space.md }}>
             <ProgressBar ratio={ratio} color={toneColor(p, ratio)} height={6} />
           </View>

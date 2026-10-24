@@ -2,6 +2,8 @@ import type { AppPreferences, MonthRecord } from '../../budgetModel';
 
 export type BudgetKind = 'monthly' | 'trip';
 export type TripDates = { start: string; end: string }; // YYYY-MM-DD, inclusive
+/** For trips abroad: 1 unit of the budget's currency = `rate` units of `currencyCode`. */
+export type Conversion = { currencyCode: string; rate: number };
 
 // A separate budget (e.g. "Personal", "Japan trip"). The active budget's months and currency live in the
 // top-level `months` / `preferences.currencyCode`, so its entry in `budgets` is stale until switched away.
@@ -12,6 +14,7 @@ export type BudgetBook = {
   months: MonthRecord[];
   kind?: BudgetKind;
   trip?: TripDates;
+  conversion?: Conversion;
 };
 
 export type BooksState = {

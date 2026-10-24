@@ -1,5 +1,6 @@
 import { getDaysInMonth, parseMonthId } from '../../budgetModel';
 import type { TripDates } from './books';
+import { deviceLocale } from './locale';
 
 const DAY = 24 * 60 * 60 * 1000;
 
@@ -43,16 +44,16 @@ export function daysLeftInPeriod(p: Period, today = new Date()): number | null {
   return daysBetween(t, p.end) + 1;
 }
 
-export function formatTripRange(trip: TripDates) {
+export function formatTripRange(trip: TripDates, locale = deviceLocale) {
   const start = fromDateKey(trip.start);
   const end = fromDateKey(trip.end);
   const sameYear = start.getFullYear() === end.getFullYear();
-  const startLabel = start.toLocaleDateString('en-US', {
+  const startLabel = start.toLocaleDateString(locale, {
     month: 'short',
     day: 'numeric',
     ...(sameYear ? {} : { year: 'numeric' }),
   });
-  const endLabel = end.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+  const endLabel = end.toLocaleDateString(locale, { month: 'short', day: 'numeric', year: 'numeric' });
   return `${startLabel} – ${endLabel}`;
 }
 

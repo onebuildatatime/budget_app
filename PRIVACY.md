@@ -1,48 +1,53 @@
-# Budget Buddy Privacy
+# Budget Buddy Privacy Policy
 
-Budget Buddy is designed to be local-first.
+_Last updated: October 24, 2026_
 
-## What stays on device
+Budget Buddy is a local-first budgeting app. It has no accounts, no servers and no analytics. We never see your data.
 
-By default, your budget data stays on the device:
+## What the app stores, and where
 
-- monthly limits
-- categories and subcategories
-- transactions
-- goals
-- theme, language, and currency preferences
-- bank-account labels
+Everything you enter stays on your phone, in the app's private storage:
 
-## Local-only storage
+- budgets (monthly and trip/event), months, income and categories
+- transactions, notes and the bank-account labels you create
+- savings goals
+- preferences such as currency, colour, reminder time and app lock
 
-Budget Buddy does not require an account and does not upload your budget to a cloud service. Calculations, charts, and monthly summaries are created on your device.
+Budget Buddy does not upload any of this anywhere. It makes no network requests with your data.
 
-You can export a copy of your data using the app's data tools. An export leaves the app only when you choose a destination through the system share sheet.
+## Backups and exports
 
-## Data deletion
+- **Back up everything** and **Export transactions** create a file and open your phone's share sheet. The file goes only where you choose to send it.
+- **Automatic backups** (optional, on by default) save one file a day in the app's own folder, visible in the Files app under _Budget Buddy › Backups_. The last 7 are kept. If your phone's iCloud Backup is turned on, Apple includes this folder in your device backup, under Apple's own privacy terms.
+- **Restore from a backup** reads only the file you pick.
 
-You can delete all your data at any time:
-1. Open the app and go to Settings
-2. Export a copy first if you want to keep one
-3. Delete the budgets and transactions you no longer want, or remove the app to erase its local data
+## Reminders
 
-## What is NOT sold or shared
+Daily reminders are scheduled on your phone as local notifications. No push server is involved and nothing about you is sent anywhere.
+
+## App lock
+
+If you turn on **Lock with Face ID**, your phone's operating system does the authentication. Budget Buddy only learns whether it succeeded. It never receives or stores your face, fingerprint or passcode.
+
+## What we do not do
 
 Budget Buddy does **not**:
-- Sell your budget data
-- Share your data with advertisers
-- Use your data for marketing
-- Require an account or data sharing to use the app
 
-## Contact & Privacy Questions
+- collect, sell or share your data
+- show ads or use advertising identifiers
+- track you across apps or websites
+- require an account
 
-**Email:** namrah.be@gmail.com
+For the App Store privacy questionnaire, the answer is **Data Not Collected**.
 
-For privacy concerns or to request data access/deletion, please email us with:
-- Description of your request
+## Deleting your data
 
-We'll respond within 48 hours.
+Delete the app to erase everything stored by it. Backup files you shared elsewhere stay wherever you saved them.
 
-## Policy updates
+## Contact
 
-This privacy policy may be updated to reflect new features or changes. Any material changes will be communicated through the app, and continued use means acceptance.
+Questions about privacy: **namrah.be@gmail.com**. We aim to reply within 48 hours.
+
+## Changes
+
+If this policy changes, the updated version will be published here with a new date.
