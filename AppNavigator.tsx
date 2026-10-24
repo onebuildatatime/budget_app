@@ -1,7 +1,10 @@
 import React, { useEffect, useState } from 'react';
 import { BackHandler, View } from 'react-native';
-import { useBudgetStore } from './src/store/useBudgetStore';
-import { initialBudgetData } from './budgetData';
+import { useBudgetStore, useActiveBook } from './src/store/useBudgetStore';
+import { rollForward } from './src/logic/rollover';
+import { applyGoalContribution } from './src/logic/goals';
+import { OnboardingScreen } from './src/screens/OnboardingScreen';
+import { TrendsScreen } from './src/screens/TrendsScreen';
 import { addMonths, getMonthId, type Transaction } from './budgetModel';
 import { HomeScreen } from './src/screens/HomeScreen';
 import { SpendScreen } from './src/screens/SpendScreen';
@@ -22,7 +25,8 @@ type Route =
   | { name: 'BudgetEditor' }
   | { name: 'Budgets' }
   | { name: 'Category'; categoryId: string }
-  | { name: 'Accounts' };
+  | { name: 'Accounts' }
+  | { name: 'Trends' };
 
 export function AppNavigator() {
   const p = usePalette();
@@ -32,7 +36,10 @@ export function AppNavigator() {
   const activeMonthId = useBudgetStore((s) => s.activeMonthId);
   const budgetCount = useBudgetStore((s) => s.budgets.length);
   const activeBudgetId = useBudgetStore((s) => s.activeBudgetId);
+  const onboarded = useBudgetStore((s) => s.onboarded);
+  const markOnboarded = useBudgetStore((s) => s.markOnboarded);
   const updateState = useBudgetStore((s) => s.updateState);
+  const isTrip = useActiveBook()?.kind === 'trip';
 
   const [hydrated, setHydrated] = useState(() => useBudgetStore.persist.hasHydrated());
   const [tab, setTab] = useState<TabName>('Home');
@@ -41,13 +48,14 @@ export function AppNavigator() {
   const [txSheet, setTxSheet] = useState<{ transaction: Transaction | null } | null>(null);
   const [newBudgetFor, setNewBudgetFor] = useState<string | null>(null);
   const [currencyOpen, setCurrencyOpen] = useState(false);
-  const [switcherOpen, setSwitcherOpen] = useState(false);
+  const [switcherOpen, setSwitcherOpen] = useState<false | 'list' | 'new'>(false);
 
-  const isFreshInstall =
-    budgetCount === 1 &&
-    goals.length === 0 &&
-    accounts.length === 0 &&
-    months.every((m) => m.categories.length === 0 && m.transactions.length === 0);
+  const hasData =
+    budgetCount > 1 ||
+    goals.length > 0 ||
+    accounts.length > 0 ||
+    months.some((m) => m.categories.length > 0 || m.transactions.length > 0);
+  const needsOnboarding = hydrated && !onboarded && !hasData;
 
   useEffect(() => {
     if (hydrated) return;
@@ -56,17 +64,25 @@ export function AppNavigator() {
     return unsubscribe;
   }, [hydrated]);
 
+  // Installs from before onboarding existed already have data: never show them the welcome screen.
   useEffect(() => {
-    if (hydrated && isFreshInstall) {
-      updateState({
-        months: initialBudgetData.months,
-        accounts: initialBudgetData.accounts,
-        goals: initialBudgetData.goals,
-        preferences: initialBudgetData.preferences,
-        activeMonthId: initialBudgetData.activeMonthId,
-      });
+    if (hydrated && !onboarded && hasData) markOnboarded();
+  }, [hydrated, onboarded, hasData, markOnboarded]);
+
+  // Carry monthly budgets into the current month (with recurring items) when the app opens.
+  useEffect(() => {
+    if (!hydrated || !onboarded || isTrip) return;
+    const state = useBudgetStore.getState();
+    const result = rollForward(state.months, getMonthId(new Date()));
+    if (!result) return;
+    let nextGoals = state.goals;
+    for (const month of result.created) {
+      for (const tx of month.transactions) {
+        nextGoals = applyGoalContribution(nextGoals, month.categories, undefined, tx);
+      }
     }
-  }, [hydrated, isFreshInstall, updateState]);
+    updateState({ months: result.months, goals: nextGoals });
+  }, [hydrated, onboarded, activeBudgetId, isTrip, updateState]);
 
   useEffect(() => {
     setSelectedMonthId(null);
@@ -82,16 +98,19 @@ export function AppNavigator() {
     return () => sub.remove();
   }, [stack.length]);
 
-  if (!hydrated || isFreshInstall) return <View style={{ flex: 1, backgroundColor: p.bg }} />;
+  if (!hydrated || (!onboarded && hasData)) return <View style={{ flex: 1, backgroundColor: p.bg }} />;
+  if (needsOnboarding) return <OnboardingScreen />;
 
   const monthIds = new Set(months.map((m) => m.id));
   const currentMonthId = getMonthId(new Date());
-  const defaultMonthId = monthIds.has(currentMonthId)
+  const defaultMonthId = isTrip
+    ? (months[0]?.id ?? currentMonthId)
+    : monthIds.has(currentMonthId)
     ? currentMonthId
     : monthIds.has(activeMonthId)
       ? activeMonthId
       : (months[months.length - 1]?.id ?? currentMonthId);
-  const monthId = selectedMonthId ?? defaultMonthId;
+  const monthId = isTrip ? defaultMonthId : (selectedMonthId ?? defaultMonthId);
   const monthExists = monthIds.has(monthId);
 
   const nextFreeMonth = () => {
@@ -131,6 +150,8 @@ export function AppNavigator() {
     );
   } else if (route?.name === 'Accounts') {
     screen = <AccountsScreen onBack={pop} />;
+  } else if (route?.name === 'Trends') {
+    screen = <TrendsScreen monthId={monthId} onBack={pop} onOpenMonth={openMonth} />;
   }
 
   return (
@@ -143,11 +164,12 @@ export function AppNavigator() {
                 monthId={monthId}
                 onMonthChange={setSelectedMonthId}
                 onOpenBudgets={openBudgets}
-                onOpenSwitcher={() => setSwitcherOpen(true)}
+                onOpenSwitcher={() => setSwitcherOpen('list')}
                 onCreateBudget={() => setNewBudgetFor(monthId)}
                 onEditBudget={editBudget}
                 onOpenCategory={(categoryId) => push({ name: 'Category', categoryId })}
                 onSeeAll={() => setTab('Spend')}
+                onOpenTrends={() => push({ name: 'Trends' })}
                 onEditTransaction={editTransaction}
               />
             )}
@@ -156,7 +178,7 @@ export function AppNavigator() {
                 monthId={monthId}
                 onMonthChange={setSelectedMonthId}
                 onOpenBudgets={openBudgets}
-                onOpenSwitcher={() => setSwitcherOpen(true)}
+                onOpenSwitcher={() => setSwitcherOpen('list')}
                 onEditTransaction={editTransaction}
               />
             )}
@@ -165,11 +187,13 @@ export function AppNavigator() {
               <MenuScreen
                 monthId={monthId}
                 onOpenBudgets={openBudgets}
-                onOpenSwitcher={() => setSwitcherOpen(true)}
+                onOpenSwitcher={() => setSwitcherOpen('list')}
                 onEditBudget={editBudget}
                 onNewBudget={openNewBudget}
                 onOpenAccounts={() => push({ name: 'Accounts' })}
                 onOpenCurrency={() => setCurrencyOpen(true)}
+                onOpenTrends={() => push({ name: 'Trends' })}
+                onNewBook={() => setSwitcherOpen('new')}
               />
             )}
           </View>
@@ -198,7 +222,12 @@ export function AppNavigator() {
         }}
       />
       <CurrencySheet visible={currencyOpen} onClose={() => setCurrencyOpen(false)} />
-      <BudgetSwitcherSheet visible={switcherOpen} monthId={monthId} onClose={() => setSwitcherOpen(false)} />
+      <BudgetSwitcherSheet
+        visible={switcherOpen !== false}
+        startInNew={switcherOpen === 'new'}
+        monthId={monthId}
+        onClose={() => setSwitcherOpen(false)}
+      />
     </View>
   );
 }

@@ -1,12 +1,11 @@
 import React from 'react';
 import { View, Text, ScrollView, Pressable, StyleSheet } from 'react-native';
 import { Feather } from '@expo/vector-icons';
-import { useBudgetStore } from '../store/useBudgetStore';
+import { useBudgetStore, useActiveBook } from '../store/useBudgetStore';
+import { daysBetween, daysLeftInPeriod, formatTripRange, monthPeriod, tripLength, tripPeriod } from '../logic/period';
 import {
   currency,
   getCategorySummaries,
-  getDaysInMonth,
-  getMonthId,
   getMonthLabel,
   getTotalPlanned,
   getTotalSpent,
@@ -29,6 +28,7 @@ export function HomeScreen({
   onOpenCategory,
   onSeeAll,
   onEditTransaction,
+  onOpenTrends,
 }: {
   monthId: string;
   onMonthChange: (id: string) => void;
@@ -39,15 +39,22 @@ export function HomeScreen({
   onOpenCategory: (categoryId: string) => void;
   onSeeAll: () => void;
   onEditTransaction: (tx: Transaction) => void;
+  onOpenTrends: () => void;
 }) {
   const p = usePalette();
   const months = useBudgetStore((s) => s.months);
   const currencyCode = useBudgetStore((s) => s.preferences.currencyCode);
   const month = months.find((m) => m.id === monthId);
+  const book = useActiveBook();
+  const trip = book?.kind === 'trip' ? book.trip : undefined;
 
   const top = (
     <View style={styles.top}>
-      <MonthSwitcher monthId={monthId} onChange={onMonthChange} onOpenList={onOpenBudgets} />
+      {trip ? (
+        <Text style={[t.bodyStrong, { color: p.text, paddingLeft: space.sm }]}>{formatTripRange(trip)}</Text>
+      ) : (
+        <MonthSwitcher monthId={monthId} onChange={onMonthChange} onOpenList={onOpenBudgets} />
+      )}
       <BudgetPill onPress={onOpenSwitcher} />
     </View>
   );
@@ -91,8 +98,17 @@ export function HomeScreen({
     .filter((x) => x.kind !== 'income' && !categoryNames.has(x.categoryId))
     .reduce((sum, x) => sum + x.amount, 0);
 
-  const isCurrentMonth = getMonthId(new Date()) === monthId;
-  const daysLeft = isCurrentMonth ? getDaysInMonth(monthId) - new Date().getDate() + 1 : null;
+  const daysLeft = daysLeftInPeriod(trip ? tripPeriod(trip) : monthPeriod(monthId));
+  const tripNote = (() => {
+    if (!trip || daysLeft !== null) return null;
+    const today = new Date();
+    const { start } = tripPeriod(trip);
+    if (today < start) {
+      const until = daysBetween(today, start);
+      return `Starts in ${until} ${until === 1 ? 'day' : 'days'} · about ${currency(left / tripLength(trip), currencyCode)} a day`;
+    }
+    return 'This trip has ended';
+  })();
 
   return (
     <Screen>
@@ -101,7 +117,7 @@ export function HomeScreen({
 
         <View style={styles.hero}>
           <Text style={[t.caption, { color: p.textSecondary }]}>
-            {left >= 0 ? 'Left to spend' : 'Over budget'}
+            {left < 0 ? 'Over budget' : trip ? 'Left for this trip' : 'Left to spend'}
           </Text>
           <Text style={[t.display, { color: left >= 0 ? p.text : p.negative, marginVertical: space.xs }]}>
             {currency(Math.abs(left), currencyCode)}
@@ -113,11 +129,16 @@ export function HomeScreen({
             {currency(spent, currencyCode)} of {currency(planned, currencyCode)}
             {daysLeft !== null ? ` · ${daysLeft} ${daysLeft === 1 ? 'day' : 'days'} left` : ''}
           </Text>
+          {tripNote && <Text style={[t.caption, { color: p.textSecondary, marginTop: 2 }]}>{tripNote}</Text>}
           {daysLeft !== null && left > 0 && (
             <Text style={[t.caption, { color: p.textSecondary, marginTop: 2 }]}>
               About {currency(left / daysLeft, currencyCode)} a day
             </Text>
           )}
+          <Pressable onPress={onOpenTrends} hitSlop={8} style={styles.trendsLink}>
+            <Feather name="bar-chart-2" size={16} color={p.accent} />
+            <Text style={[t.caption, { color: p.accent, fontWeight: '600' }]}>Trends</Text>
+          </Pressable>
         </View>
 
         <SectionLabel right={<Link label="Edit" onPress={onEditBudget} />}>Categories</SectionLabel>
@@ -205,6 +226,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: space.sm,
   },
+  trendsLink: { flexDirection: 'row', alignItems: 'center', gap: 6, alignSelf: 'flex-start', marginTop: space.md },
   empty: {
     flex: 1,
     alignItems: 'center',

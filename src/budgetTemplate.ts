@@ -43,3 +43,30 @@ export function buildTemplateCategories(income: number): Category[] {
   emergency.planned = Math.round((emergency.planned + income - assigned) * 100) / 100;
   return categories;
 }
+
+const tripItems: { name: string; share: number; subcategories: string[] }[] = [
+  { name: 'Getting there', share: 0.25, subcategories: ['Flights', 'Trains', 'Airport transfers'] },
+  { name: 'Accommodation', share: 0.3, subcategories: ['Hotels', 'Rentals'] },
+  { name: 'Food & drink', share: 0.2, subcategories: ['Restaurants', 'Groceries', 'Coffee & snacks'] },
+  { name: 'Local transport', share: 0.07, subcategories: ['Public transport', 'Taxis', 'Car hire'] },
+  { name: 'Activities', share: 0.1, subcategories: ['Tours', 'Tickets', 'Experiences'] },
+  { name: 'Shopping', share: 0.05, subcategories: ['Souvenirs', 'Gifts'] },
+  { name: 'Buffer', share: 0.03, subcategories: [] },
+];
+
+export function buildTripCategories(total: number): Category[] {
+  const categories = tripItems.map((item, index) => ({
+    id: createId('cat'),
+    name: item.name,
+    planned: Math.floor(total * item.share * 100) / 100,
+    subcategories: item.subcategories,
+    subcategoryBudgets: {},
+    bucket: 'wants' as CategoryBucket,
+    themeId: inferThemeId(item.name, index),
+    recurring: false,
+  }));
+  const assigned = categories.reduce((sum, c) => sum + c.planned, 0);
+  const buffer = categories[categories.length - 1];
+  buffer.planned = Math.round((buffer.planned + total - assigned) * 100) / 100;
+  return categories;
+}

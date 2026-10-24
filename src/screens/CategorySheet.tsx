@@ -2,11 +2,12 @@ import React, { useEffect, useState } from 'react';
 import { View, Text, TextInput, Pressable, ScrollView, StyleSheet } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import { createId, currency, type Category, type CategoryBucket, type ThemeId } from '../../budgetModel';
+import { useBudgetStore, useActiveBook } from '../store/useBudgetStore';
 import { usePalette, type as t, space } from '../ui/theme';
 import { Sheet } from '../ui/Sheet';
-import { Segmented, Button } from '../ui/primitives';
+import { Segmented, Button, Chip } from '../ui/primitives';
 
-export type DraftSub = { key: string; name: string; amount: string };
+export type DraftSub = { key: string; name: string; amount: string; goalId?: string };
 export type DraftCategory = {
   id: string;
   name: string;
@@ -15,6 +16,7 @@ export type DraftCategory = {
   subs: DraftSub[];
   themeId: ThemeId;
   recurring: boolean;
+  goalId?: string;
   isNew?: boolean;
 };
 
@@ -37,15 +39,17 @@ export function toDraft(c: Category): DraftCategory {
       key: createId('sub'),
       name,
       amount: formatAmount(c.subcategoryBudgets?.[name] ?? 0),
+      goalId: c.subcategoryGoals?.[name],
     })),
     themeId: c.themeId,
     recurring: c.recurring,
+    goalId: c.goalId,
   };
 }
 
 export function fromDraft(d: DraftCategory): Category {
   const subs = d.subs
-    .map((s) => ({ name: s.name.trim(), amount: toAmount(s.amount) }))
+    .map((s) => ({ name: s.name.trim(), amount: toAmount(s.amount), goalId: s.goalId }))
     .filter((s, i, all) => s.name && all.findIndex((x) => x.name === s.name) === i);
   return {
     id: d.id,
@@ -53,6 +57,10 @@ export function fromDraft(d: DraftCategory): Category {
     planned: toAmount(d.planned),
     subcategories: subs.map((s) => s.name),
     subcategoryBudgets: Object.fromEntries(subs.filter((s) => s.amount > 0).map((s) => [s.name, s.amount])),
+    ...(d.goalId ? { goalId: d.goalId } : {}),
+    ...(subs.some((s) => s.goalId)
+      ? { subcategoryGoals: Object.fromEntries(subs.filter((s) => s.goalId).map((s) => [s.name, s.goalId!])) }
+      : {}),
     bucket: d.bucket,
     themeId: d.themeId,
     recurring: d.recurring,
@@ -81,6 +89,10 @@ export function CategorySheet({
   const p = usePalette();
   const [draft, setDraft] = useState<DraftCategory | null>(category);
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const [linkingSub, setLinkingSub] = useState<string | null>(null);
+  const goals = useBudgetStore((s) => s.goals);
+  const isTrip = useActiveBook()?.kind === 'trip';
+  const goalName = (id?: string) => goals.find((g) => g.id === id)?.name;
 
   useEffect(() => {
     setDraft(category);
@@ -117,8 +129,12 @@ export function CategorySheet({
           style={[t.body, styles.field, { color: p.text, backgroundColor: p.fill }]}
         />
 
-        <Text style={[t.overline, styles.label, { color: p.textSecondary }]}>Type</Text>
-        <Segmented options={buckets} value={draft.bucket} onChange={(bucket) => update({ bucket })} />
+        {!isTrip && (
+          <>
+            <Text style={[t.overline, styles.label, { color: p.textSecondary }]}>Type</Text>
+            <Segmented options={buckets} value={draft.bucket} onChange={(bucket) => update({ bucket })} />
+          </>
+        )}
 
         <Text style={[t.overline, styles.label, { color: p.textSecondary }]}>Monthly budget</Text>
         <TextInput
@@ -139,7 +155,8 @@ export function CategorySheet({
           )}
         </View>
         {draft.subs.map((s) => (
-          <View key={s.key} style={styles.subRow}>
+          <View key={s.key}>
+          <View style={styles.subRow}>
             <TextInput
               value={s.name}
               onChangeText={(name) => updateSub(s.key, { name })}
@@ -163,6 +180,36 @@ export function CategorySheet({
               <Feather name="minus-circle" size={20} color={p.negative} />
             </Pressable>
           </View>
+          {goals.length > 0 && (
+            <Pressable
+              onPress={() => setLinkingSub(linkingSub === s.key ? null : s.key)}
+              style={styles.subGoal}
+              accessibilityLabel={`Link ${s.name || 'subcategory'} to a goal`}
+            >
+              <Feather name="target" size={13} color={s.goalId ? p.accent : p.textTertiary} />
+              <Text style={[t.caption, { color: s.goalId ? p.accent : p.textTertiary }]}>
+                {s.goalId ? `Pays into ${goalName(s.goalId) ?? 'a goal'}` : 'Link to a goal'}
+              </Text>
+            </Pressable>
+          )}
+          {linkingSub === s.key && (
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.goalChips}>
+              <Chip label="None" variant="subtle" selected={!s.goalId} onPress={() => updateSub(s.key, { goalId: undefined })} />
+              {goals.map((g) => (
+                <Chip
+                  key={g.id}
+                  label={g.name}
+                  variant="subtle"
+                  selected={s.goalId === g.id}
+                  onPress={() => {
+                    updateSub(s.key, { goalId: g.id });
+                    setLinkingSub(null);
+                  }}
+                />
+              ))}
+            </ScrollView>
+          )}
+          </View>
         ))}
         <Pressable
           onPress={() => update({ subs: [...draft.subs, { key: createId('sub'), name: '', amount: '' }] })}
@@ -172,6 +219,22 @@ export function CategorySheet({
           <Text style={[t.body, { color: p.accent }]}>Add subcategory</Text>
         </Pressable>
         <Text style={[t.caption, { color: p.textTertiary }]}>Subcategory amounts are optional.</Text>
+
+        {goals.length > 0 && (
+          <>
+            <Text style={[t.overline, styles.label, { color: p.textSecondary }]}>Pays into a goal</Text>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.goalChips}>
+              <Chip label="None" selected={!draft.goalId} onPress={() => update({ goalId: undefined })} />
+              {goals.map((g) => (
+                <Chip key={g.id} label={g.name} selected={draft.goalId === g.id} onPress={() => update({ goalId: g.id })} />
+              ))}
+            </ScrollView>
+            <Text style={[t.caption, { color: p.textTertiary, marginTop: space.xs }]}>
+              Money you log here from now on is added to the goal automatically. A subcategory's own link takes
+              priority.
+            </Text>
+          </>
+        )}
 
         <View style={styles.actions}>
           <Button label={draft.isNew ? 'Add category' : 'Done'} onPress={() => onSave(draft)} disabled={!canSave} />
@@ -208,6 +271,8 @@ const styles = StyleSheet.create({
   },
   subRow: { flexDirection: 'row', alignItems: 'center', gap: space.sm, marginBottom: space.sm },
   subAmount: { width: 96, textAlign: 'right' },
+  subGoal: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: -2, marginBottom: space.sm, marginLeft: 2 },
+  goalChips: { gap: space.sm, paddingBottom: space.sm },
   addSub: { flexDirection: 'row', alignItems: 'center', gap: space.sm, paddingVertical: space.sm },
   actions: { marginTop: space.xl, gap: space.sm },
   delete: { alignItems: 'center', paddingVertical: space.md },

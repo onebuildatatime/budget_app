@@ -50,10 +50,13 @@ export function TransactionRow({
         <Text style={[t.body, { color: p.text }]} numberOfLines={1}>
           {title}
         </Text>
-        {!!subtitle && (
-          <Text style={[t.caption, { color: p.textSecondary, marginTop: 2 }]} numberOfLines={1}>
-            {subtitle}
-          </Text>
+        {(!!subtitle || transaction.recurring) && (
+          <View style={styles.subtitle}>
+            {transaction.recurring && <Feather name="repeat" size={12} color={p.textSecondary} />}
+            <Text style={[t.caption, { color: p.textSecondary, flexShrink: 1 }]} numberOfLines={1}>
+              {subtitle || 'Monthly'}
+            </Text>
+          </View>
         )}
       </View>
       <Text style={[t.amount, { color: income ? p.positive : p.text }]}>
@@ -80,4 +83,5 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   body: { flex: 1 },
+  subtitle: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 2 },
 });

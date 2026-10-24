@@ -2,7 +2,8 @@ import React, { useEffect, useState } from 'react';
 import { View, Text, ScrollView, Pressable, TextInput, StyleSheet } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import { useBudgetStore } from '../store/useBudgetStore';
-import { createId, currency, inferThemeId, type Goal } from '../../budgetModel';
+import { compareMonthIds, createId, currency, inferThemeId, type Goal } from '../../budgetModel';
+import { goalSources } from '../logic/goals';
 import { triggerHaptic } from '../utils/haptics';
 import { usePalette, type as t, space } from '../ui/theme';
 import { Screen, LargeTitle, ProgressBar, Button } from '../ui/primitives';
@@ -12,6 +13,9 @@ import { cleanAmountInput, toAmount } from './CategorySheet';
 export function GoalsScreen() {
   const p = usePalette();
   const goals = useBudgetStore((s) => s.goals);
+  const months = useBudgetStore((s) => s.months);
+  const latest = [...months].sort((a, b) => compareMonthIds(b.id, a.id))[0];
+  const sources = goalSources(latest?.categories ?? []);
   const currencyCode = useBudgetStore((s) => s.preferences.currencyCode);
   const updateState = useBudgetStore((s) => s.updateState);
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -85,7 +89,13 @@ export function GoalsScreen() {
 
             <View style={{ marginTop: space.lg }}>
               {goals.map((goal) => (
-                <GoalRow key={goal.id} goal={goal} currencyCode={currencyCode} onPress={() => setSelectedId(goal.id)} />
+                <GoalRow
+                  key={goal.id}
+                  goal={goal}
+                  currencyCode={currencyCode}
+                  fundedBy={sources.get(goal.id)}
+                  onPress={() => setSelectedId(goal.id)}
+                />
               ))}
             </View>
           </>
@@ -246,7 +256,17 @@ function GoalFormSheet({
   );
 }
 
-function GoalRow({ goal, currencyCode, onPress }: { goal: Goal; currencyCode: string; onPress: () => void }) {
+function GoalRow({
+  goal,
+  currencyCode,
+  fundedBy,
+  onPress,
+}: {
+  goal: Goal;
+  currencyCode: string;
+  fundedBy?: string[];
+  onPress: () => void;
+}) {
   const p = usePalette();
   const ratio = goal.target > 0 ? goal.saved / goal.target : 0;
   const done = ratio >= 1;
@@ -265,6 +285,14 @@ function GoalRow({ goal, currencyCode, onPress }: { goal: Goal; currencyCode: st
       <Text style={[t.caption, { color: done ? p.positive : p.textSecondary }]}>
         {done ? 'Reached' : `${Math.round(ratio * 100)}% · ${currency(goal.target - goal.saved, currencyCode)} to go`}
       </Text>
+      {fundedBy && (
+        <View style={styles.funded}>
+          <Feather name="link" size={12} color={p.textTertiary} />
+          <Text style={[t.caption, { color: p.textTertiary, flexShrink: 1 }]} numberOfLines={1}>
+            Funded from {fundedBy.join(', ')}
+          </Text>
+        </View>
+      )}
     </Pressable>
   );
 }
@@ -281,4 +309,5 @@ const styles = StyleSheet.create({
   pair: { flexDirection: 'row', gap: space.md },
   input: { borderBottomWidth: StyleSheet.hairlineWidth, paddingVertical: space.md, marginVertical: space.xl },
   delete: { alignItems: 'center', paddingVertical: space.md },
+  funded: { flexDirection: 'row', alignItems: 'center', gap: 4 },
 });

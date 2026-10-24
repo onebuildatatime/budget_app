@@ -11,7 +11,7 @@ import {
 } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useBudgetStore } from '../store/useBudgetStore';
+import { useBudgetStore, useActiveBook } from '../store/useBudgetStore';
 import {
   categoryBucketOrder,
   createId,
@@ -45,6 +45,7 @@ export function BudgetEditorScreen({ monthId, onBack }: { monthId: string; onBac
   const currencyCode = useBudgetStore((s) => s.preferences.currencyCode);
   const updateState = useBudgetStore((s) => s.updateState);
   const month = months.find((m) => m.id === monthId);
+  const isTrip = useActiveBook()?.kind === 'trip';
 
   const [income, setIncome] = useState(() => month?.monthlyLimit ?? '');
   const [cats, setCats] = useState<DraftCategory[]>(() => month?.categories.map(toDraft) ?? []);
@@ -103,18 +104,20 @@ export function BudgetEditorScreen({ monthId, onBack }: { monthId: string; onBac
   return (
     <Screen>
       <Header
-        title="Budget"
+        title={isTrip ? 'Trip budget' : 'Budget'}
         onBack={back}
         right={
-          <Pressable onPress={() => setTemplateOpen(true)} hitSlop={10}>
-            <Text style={[t.caption, { color: p.accent, fontWeight: '600' }]}>50/30/20</Text>
-          </Pressable>
+          isTrip ? undefined : (
+            <Pressable onPress={() => setTemplateOpen(true)} hitSlop={10}>
+              <Text style={[t.caption, { color: p.accent, fontWeight: '600' }]}>50/30/20</Text>
+            </Pressable>
+          )
         }
       />
       <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={{ paddingBottom: space.xl }}>
           <View style={styles.incomeRow}>
-            <Text style={[t.body, { color: p.text, flex: 1 }]}>Monthly income</Text>
+            <Text style={[t.body, { color: p.text, flex: 1 }]}>{isTrip ? 'Trip total' : 'Monthly income'}</Text>
             <TextInput
               value={income}
               onChangeText={(v) => setIncome(cleanAmountInput(v))}
@@ -141,8 +144,8 @@ export function BudgetEditorScreen({ monthId, onBack }: { monthId: string; onBac
             </Text>
           </View>
 
-          {categoryBucketOrder.map((bucket) => {
-            const inBucket = cats.filter((c) => c.bucket === bucket);
+          {(isTrip ? (['wants'] as const) : categoryBucketOrder).map((bucket) => {
+            const inBucket = isTrip ? cats : cats.filter((c) => c.bucket === bucket);
             const total = inBucket.reduce((sum, c) => sum + toAmount(c.planned), 0);
             const share = incomeValue > 0 ? Math.round((total / incomeValue) * 100) : 0;
             const target = bucketTargets[bucket] * 100;
@@ -151,14 +154,14 @@ export function BudgetEditorScreen({ monthId, onBack }: { monthId: string; onBac
               <View key={bucket}>
                 <SectionLabel
                   right={
-                    <Text style={[t.caption, { color: p.textSecondary }]}>
+                    isTrip ? undefined : <Text style={[t.caption, { color: p.textSecondary }]}>
                       {currency(total, currencyCode)} ·{' '}
                       <Text style={{ color: offTarget ? p.warning : p.textSecondary }}>{share}%</Text>
                       <Text style={{ color: p.textTertiary }}> of {target}%</Text>
                     </Text>
                   }
                 >
-                  {bucketLabel[bucket]}
+                  {isTrip ? 'Categories' : bucketLabel[bucket]}
                 </SectionLabel>
                 {inBucket.map((c) => (
                   <View key={c.id}>

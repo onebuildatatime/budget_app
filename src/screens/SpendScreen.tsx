@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { View, Text, SectionList, ScrollView, StyleSheet } from 'react-native';
-import { useBudgetStore } from '../store/useBudgetStore';
+import { useBudgetStore, useActiveBook } from '../store/useBudgetStore';
+import { formatTripRange } from '../logic/period';
 import { currency, sortTransactions, type Transaction } from '../../budgetModel';
 import { usePalette, type as t, space } from '../ui/theme';
 import { Screen, LargeTitle, Segmented, Divider, Chip } from '../ui/primitives';
@@ -29,6 +30,8 @@ export function SpendScreen({
   const [sort, setSort] = useState<Sort>('recent');
   const [filter, setFilter] = useState<string | null>(null);
   const month = months.find((m) => m.id === monthId);
+  const book = useActiveBook();
+  const trip = book?.kind === 'trip' ? book.trip : undefined;
 
   const categoryNames = new Map(month?.categories.map((c) => [c.id, c.name]) ?? []);
   const all = month ? sortTransactions(month.transactions, sort) : [];
@@ -54,7 +57,11 @@ export function SpendScreen({
       <LargeTitle right={<BudgetPill onPress={onOpenSwitcher} />}>Spending</LargeTitle>
       <View style={styles.controls}>
         <View style={styles.row}>
-          <MonthSwitcher monthId={monthId} onChange={changeMonth} onOpenList={onOpenBudgets} />
+          {trip ? (
+            <Text style={[t.bodyStrong, { color: p.text, paddingLeft: space.sm }]}>{formatTripRange(trip)}</Text>
+          ) : (
+            <MonthSwitcher monthId={monthId} onChange={changeMonth} onOpenList={onOpenBudgets} />
+          )}
           <Text style={[t.caption, { color: p.textSecondary }]}>{currency(total, currencyCode)} spent</Text>
         </View>
         <Segmented

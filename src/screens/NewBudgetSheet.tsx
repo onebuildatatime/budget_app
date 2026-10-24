@@ -4,13 +4,14 @@ import { Feather } from '@expo/vector-icons';
 import { useBudgetStore } from '../store/useBudgetStore';
 import {
   compareMonthIds,
-  copyMonthBudget,
   createEmptyMonth,
   currency,
   getMonthLabel,
   type MonthRecord,
 } from '../../budgetModel';
 import { buildTemplateCategories } from '../budgetTemplate';
+import { copyMonth } from '../logic/rollover';
+import { applyGoalContribution } from '../logic/goals';
 import { triggerHaptic } from '../utils/haptics';
 import { usePalette, type as t, space } from '../ui/theme';
 import { Sheet } from '../ui/Sheet';
@@ -34,6 +35,7 @@ export function NewBudgetSheet({
   const p = usePalette();
   const months = useBudgetStore((s) => s.months);
   const currencyCode = useBudgetStore((s) => s.preferences.currencyCode);
+  const goals = useBudgetStore((s) => s.goals);
   const updateState = useBudgetStore((s) => s.updateState);
 
   const [monthId, setMonthId] = useState(initialMonthId);
@@ -56,17 +58,22 @@ export function NewBudgetSheet({
   }, [visible, initialMonthId]);
 
   const exists = months.some((m) => m.id === monthId);
+  const recurringCount = source?.transactions.filter((x) => x.recurring).length ?? 0;
   const incomeValue = toAmount(income);
 
   const create = () => {
     let record: MonthRecord;
     if (start === 'copy' && source) {
-      record = copyMonthBudget(source, monthId);
+      record = copyMonth(source, monthId);
     } else {
       record = createEmptyMonth(monthId, String(incomeValue), currencyCode);
       if (start === 'template') record.categories = buildTemplateCategories(incomeValue);
     }
-    updateState({ months: [...months, record].sort((a, b) => compareMonthIds(a.id, b.id)) });
+    const nextGoals = record.transactions.reduce(
+      (acc, tx) => applyGoalContribution(acc, record.categories, undefined, tx),
+      goals,
+    );
+    updateState({ months: [...months, record].sort((a, b) => compareMonthIds(a.id, b.id)), goals: nextGoals });
     triggerHaptic('success');
     onCreated(monthId, start !== 'copy');
   };
@@ -76,7 +83,9 @@ export function NewBudgetSheet({
       value: 'copy',
       title: source ? `Copy ${getMonthLabel(source.id, 'en-US')}` : 'Copy a month',
       detail: source
-        ? `${source.categories.length} categories, ${currency(parseFloat(source.monthlyLimit), currencyCode)} income. Transactions aren't copied.`
+        ? `${source.categories.length} categories, ${currency(parseFloat(source.monthlyLimit), currencyCode)} income${
+            recurringCount ? `, ${recurringCount} repeating ${recurringCount === 1 ? 'item' : 'items'}` : ''
+          }. Other transactions aren't copied.`
         : '',
       hidden: !source,
     },

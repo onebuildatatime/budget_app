@@ -64,6 +64,8 @@ export type Category = {
   planned: number;
   subcategories: string[];
   subcategoryBudgets?: Record<string, number>;
+  goalId?: string;
+  subcategoryGoals?: Record<string, string>;
   bucket: CategoryBucket;
   themeId: ThemeId;
   recurring: boolean;

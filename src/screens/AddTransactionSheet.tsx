@@ -1,16 +1,10 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, Pressable, ScrollView, TextInput, StyleSheet } from 'react-native';
+import { View, Text, Pressable, ScrollView, TextInput, Switch, StyleSheet } from 'react-native';
 import { Feather } from '@expo/vector-icons';
-import { useBudgetStore } from '../store/useBudgetStore';
-import {
-  buildIsoDateForMonth,
-  createId,
-  currency,
-  getDaysInMonth,
-  getMonthId,
-  INCOME_CATEGORY_ID,
-  type Transaction,
-} from '../../budgetModel';
+import { useBudgetStore, useActiveBook } from '../store/useBudgetStore';
+import { applyGoalContribution } from '../logic/goals';
+import { clampToPeriod, addDays, isoForDay, monthPeriod, sameDay, tripPeriod } from '../logic/period';
+import { createId, currency, INCOME_CATEGORY_ID, type Transaction } from '../../budgetModel';
 import { triggerHaptic } from '../utils/haptics';
 import { usePalette, type as t, space } from '../ui/theme';
 import { Sheet } from '../ui/Sheet';
@@ -40,11 +34,13 @@ export function AddTransactionSheet({
   const months = useBudgetStore((s) => s.months);
   const accounts = useBudgetStore((s) => s.accounts);
   const currencyCode = useBudgetStore((s) => s.preferences.currencyCode);
+  const goals = useBudgetStore((s) => s.goals);
   const updateState = useBudgetStore((s) => s.updateState);
   const month = months.find((m) => m.id === monthId);
   const editing = !!transaction;
-  const daysInMonth = getDaysInMonth(monthId);
-  const isCurrentMonth = getMonthId(new Date()) === monthId;
+  const book = useActiveBook();
+  const trip = book?.kind === 'trip' ? book.trip : undefined;
+  const periodKey = trip ? `${trip.start}_${trip.end}` : monthId;
 
   const [kind, setKind] = useState<Kind>('expense');
   const [amount, setAmount] = useState('');
@@ -52,11 +48,15 @@ export function AddTransactionSheet({
   const [categoryId, setCategoryId] = useState<string | undefined>();
   const [subcategory, setSubcategory] = useState<string | undefined>();
   const [accountId, setAccountId] = useState<string | undefined>();
-  const [day, setDay] = useState(1);
+  const [date, setDate] = useState(() => new Date());
+  const [recurring, setRecurring] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
+
+  const period = trip ? tripPeriod(trip) : monthPeriod(monthId);
 
   useEffect(() => {
     if (!visible) return;
+    const range = trip ? tripPeriod(trip) : monthPeriod(monthId);
     setConfirmDelete(false);
     if (transaction) {
       setKind(transaction.kind === 'income' ? 'income' : 'expense');
@@ -65,7 +65,8 @@ export function AddTransactionSheet({
       setCategoryId(transaction.kind === 'income' ? undefined : transaction.categoryId);
       setSubcategory(transaction.subcategory);
       setAccountId(transaction.accountId);
-      setDay(new Date(transaction.happenedAt).getDate());
+      setDate(new Date(transaction.happenedAt));
+      setRecurring(!!transaction.recurring);
     } else {
       setKind('expense');
       setAmount('');
@@ -73,14 +74,15 @@ export function AddTransactionSheet({
       setCategoryId(undefined);
       setSubcategory(undefined);
       setAccountId(accounts.find((a) => a.kinds.includes('spending'))?.id ?? accounts[0]?.id);
-      setDay(isCurrentMonth ? new Date().getDate() : 1);
+      setDate(clampToPeriod(new Date(), range));
+      setRecurring(false);
     }
-  }, [visible, transaction, accounts, isCurrentMonth]);
+  }, [visible, transaction, accounts, periodKey]);
 
   const subcategories = month?.categories.find((c) => c.id === categoryId)?.subcategories ?? [];
-  const date = new Date(buildIsoDateForMonth(monthId, day));
-  const isToday = isCurrentMonth && day === new Date().getDate();
-  const dateLabel = isToday
+  const atStart = sameDay(date, period.start);
+  const atEnd = sameDay(date, period.end);
+  const dateLabel = sameDay(date, new Date())
     ? 'Today'
     : date.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
 
@@ -101,12 +103,17 @@ export function AddTransactionSheet({
     });
   };
 
-  const writeTransactions = (update: (list: Transaction[]) => Transaction[]) => {
+  const writeTransactions = (
+    update: (list: Transaction[]) => Transaction[],
+    before?: Transaction,
+    after?: Transaction,
+  ) => {
     if (!month) return;
     updateState({
       months: months.map((m) =>
         m.id === month.id ? { ...m, transactions: update(m.transactions), updatedAt: Date.now() } : m,
       ),
+      goals: applyGoalContribution(goals, month.categories, before, after),
     });
   };
 
@@ -120,11 +127,13 @@ export function AddTransactionSheet({
       accountId,
       amount: value,
       note: note.trim(),
-      happenedAt: buildIsoDateForMonth(monthId, day),
-      recurring: transaction?.recurring ?? false,
+      happenedAt: isoForDay(date),
+      recurring: !trip && recurring,
     };
-    writeTransactions((list) =>
-      editing ? list.map((x) => (x.id === next.id ? next : x)) : [...list, next],
+    writeTransactions(
+      (list) => (editing ? list.map((x) => (x.id === next.id ? next : x)) : [...list, next]),
+      transaction ?? undefined,
+      next,
     );
     triggerHaptic('success');
     onClose();
@@ -135,7 +144,7 @@ export function AddTransactionSheet({
       setConfirmDelete(true);
       return;
     }
-    writeTransactions((list) => list.filter((x) => x.id !== transaction?.id));
+    writeTransactions((list) => list.filter((x) => x.id !== transaction?.id), transaction ?? undefined);
     triggerHaptic('success');
     onClose();
   };
@@ -177,23 +186,23 @@ export function AddTransactionSheet({
           </Text>
           <View style={styles.dateRow}>
             <Pressable
-              onPress={() => setDay((d) => Math.max(1, d - 1))}
-              disabled={day <= 1}
+              onPress={() => setDate((d) => addDays(d, -1))}
+              disabled={atStart}
               hitSlop={10}
               accessibilityLabel="Previous day"
             >
-              <Feather name="chevron-left" size={18} color={day <= 1 ? p.hairline : p.textSecondary} />
+              <Feather name="chevron-left" size={18} color={atStart ? p.hairline : p.textSecondary} />
             </Pressable>
             <Text style={[t.caption, { color: p.textSecondary, minWidth: 110, textAlign: 'center' }]}>
               {dateLabel}
             </Text>
             <Pressable
-              onPress={() => setDay((d) => Math.min(daysInMonth, d + 1))}
-              disabled={day >= daysInMonth}
+              onPress={() => setDate((d) => addDays(d, 1))}
+              disabled={atEnd}
               hitSlop={10}
               accessibilityLabel="Next day"
             >
-              <Feather name="chevron-right" size={18} color={day >= daysInMonth ? p.hairline : p.textSecondary} />
+              <Feather name="chevron-right" size={18} color={atEnd ? p.hairline : p.textSecondary} />
             </Pressable>
           </View>
         </View>
@@ -251,6 +260,19 @@ export function AddTransactionSheet({
           returnKeyType="done"
           style={[t.body, styles.note, { color: p.text, backgroundColor: p.fill }]}
         />
+
+        {!trip && (
+          <View style={styles.repeatRow}>
+            <Feather name="repeat" size={16} color={p.textSecondary} />
+            <Text style={[t.body, { color: p.text, flex: 1 }]}>Repeats every month</Text>
+            <Switch
+              value={recurring}
+              onValueChange={setRecurring}
+              trackColor={{ true: p.accent, false: p.hairline }}
+              accessibilityLabel="Repeats every month"
+            />
+          </View>
+        )}
 
         <View style={styles.pad}>
           {KEYS.map((key) => (
@@ -335,4 +357,5 @@ const styles = StyleSheet.create({
     borderRadius: 12,
   },
   delete: { alignItems: 'center', paddingVertical: space.md },
+  repeatRow: { flexDirection: 'row', alignItems: 'center', gap: space.sm, paddingVertical: space.xs },
 });
