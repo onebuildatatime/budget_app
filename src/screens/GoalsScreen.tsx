@@ -1,449 +1,284 @@
-import React, { useState } from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  ScrollView,
-  FlatList,
-  Pressable,
-  SafeAreaView,
-  Modal,
-  TextInput,
-  Alert,
-} from 'react-native';
+import React, { useEffect, useState } from 'react';
+import { View, Text, ScrollView, Pressable, TextInput, StyleSheet } from 'react-native';
+import { Feather } from '@expo/vector-icons';
 import { useBudgetStore } from '../store/useBudgetStore';
-import { useTheme } from '../hooks/useTheme';
-import { FloatingNav } from '../components/FloatingNav';
-import { MenuNav } from '../components/MenuNav';
+import { createId, currency, inferThemeId, type Goal } from '../../budgetModel';
+import { triggerHaptic } from '../utils/haptics';
+import { usePalette, type as t, space } from '../ui/theme';
+import { Screen, LargeTitle, ProgressBar, Button } from '../ui/primitives';
+import { Sheet } from '../ui/Sheet';
+import { cleanAmountInput, toAmount } from './CategorySheet';
 
-import { currency } from '../../budgetModel';
-import type { Goal } from '../../budgetModel';
+export function GoalsScreen() {
+  const p = usePalette();
+  const goals = useBudgetStore((s) => s.goals);
+  const currencyCode = useBudgetStore((s) => s.preferences.currencyCode);
+  const updateState = useBudgetStore((s) => s.updateState);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [formGoal, setFormGoal] = useState<Goal | 'new' | null>(null);
+  const [amount, setAmount] = useState('');
 
-export function GoalsScreen({
-  currentScreen,
-  onNavigate,
-}: {
-  currentScreen: string;
-  onNavigate: (screen: string) => void;
-}) {
-  const theme = useTheme();
-  const { goals, preferences, updateState } = useBudgetStore();
-  const [selectedGoal, setSelectedGoal] = useState<Goal | null>(null);
-  const [showModal, setShowModal] = useState(false);
-  const [contributionAmount, setContributionAmount] = useState('');
-
-  const sortedGoals = [...goals].sort((a, b) => {
-    const progressA = a.target > 0 ? (a.saved / a.target) * 100 : 0;
-    const progressB = b.target > 0 ? (b.saved / b.target) * 100 : 0;
-    return progressA - progressB;
-  });
-
+  const selected = goals.find((g) => g.id === selectedId) ?? null;
   const totalTarget = goals.reduce((sum, g) => sum + g.target, 0);
   const totalSaved = goals.reduce((sum, g) => sum + g.saved, 0);
-  const overallProgress = totalTarget > 0 ? (totalSaved / totalTarget) * 100 : 0;
+  const parsed = toAmount(amount);
 
-  const handleAddContribution = () => {
-    if (!selectedGoal || !contributionAmount || parseFloat(contributionAmount) <= 0) {
-      Alert.alert('Invalid amount', 'Please enter a valid contribution amount.');
-      return;
-    }
-
-    const amount = parseFloat(contributionAmount);
-    const updatedGoal: Goal = {
-      ...selectedGoal,
-      saved: selectedGoal.saved + amount,
-    };
-
-    updateState({
-      goals: goals.map((g) => (g.id === selectedGoal.id ? updatedGoal : g)),
-    });
-
-    setContributionAmount('');
-    setShowModal(false);
-    Alert.alert(
-      'Added',
-      `Added ${currency(amount, preferences.currencyCode)} to ${selectedGoal.name}`
-    );
+  const close = () => {
+    setSelectedId(null);
+    setAmount('');
   };
 
-  const handleWithdraw = () => {
-    if (!selectedGoal || !contributionAmount || parseFloat(contributionAmount) <= 0) {
-      Alert.alert('Invalid amount', 'Please enter a valid withdrawal amount.');
-      return;
-    }
+  const apply = (sign: 1 | -1) => {
+    if (!selected || parsed <= 0) return;
+    const saved = Math.max(0, Math.round((selected.saved + sign * parsed) * 100) / 100);
+    updateState({ goals: goals.map((g) => (g.id === selected.id ? { ...g, saved } : g)) });
+    triggerHaptic('success');
+    close();
+  };
 
-    const amount = parseFloat(contributionAmount);
-    if (selectedGoal.saved < amount) {
-      Alert.alert('Insufficient balance', `You only have ${currency(selectedGoal.saved, preferences.currencyCode)} saved.`);
-      return;
-    }
+  const saveGoal = (goal: Goal) => {
+    const exists = goals.some((g) => g.id === goal.id);
+    updateState({ goals: exists ? goals.map((g) => (g.id === goal.id ? goal : g)) : [...goals, goal] });
+    triggerHaptic('success');
+    setFormGoal(null);
+  };
 
-    const updatedGoal: Goal = {
-      ...selectedGoal,
-      saved: Math.max(0, selectedGoal.saved - amount),
-    };
-
-    updateState({
-      goals: goals.map((g) => (g.id === selectedGoal.id ? updatedGoal : g)),
-    });
-
-    setContributionAmount('');
-    setShowModal(false);
-    Alert.alert(
-      'Withdrawn',
-      `Withdrew ${currency(amount, preferences.currencyCode)} from ${selectedGoal.name}`
-    );
+  const deleteGoal = (id: string) => {
+    updateState({ goals: goals.filter((g) => g.id !== id) });
+    setFormGoal(null);
   };
 
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]}>
-      <View style={styles.header}>
-        <Pressable onPress={() => onNavigate('Dashboard')}>
-          <Text style={[styles.backButton, { color: theme.accent }]}>← Back</Text>
-        </Pressable>
-        <Text style={[styles.headerTitle, { color: theme.text }]}>Savings Goals</Text>
-        <View style={{ width: 40 }} />
-      </View>
+    <Screen>
+      <ScrollView contentContainerStyle={{ paddingBottom: space.xxl }} showsVerticalScrollIndicator={false}>
+        <LargeTitle
+          right={
+            <Pressable onPress={() => setFormGoal('new')} hitSlop={10} accessibilityLabel="New goal">
+              <Feather name="plus" size={24} color={p.accent} />
+            </Pressable>
+          }
+        >
+          Goals
+        </LargeTitle>
 
-      <ScrollView contentContainerStyle={styles.scrollContent}>
-        {/* Overall Progress */}
-        <View style={[styles.overallCard, { backgroundColor: theme.hero }]}>
-          <Text style={[styles.overallLabel, { color: theme.heroMuted }]}>Total Progress</Text>
-          <Text style={[styles.overallAmount, { color: theme.heroText }]}>
-            {currency(totalSaved, preferences.currencyCode)}
-          </Text>
-          <Text style={[styles.overallTarget, { color: theme.heroMuted }]}>
-            of {currency(totalTarget, preferences.currencyCode)}
-          </Text>
-
-          <View style={[styles.overallProgressBar, { backgroundColor: theme.heroPanelSoft }]}>
-            <View
-              style={[
-                styles.overallProgressFill,
-                {
-                  width: `${Math.min(overallProgress, 100)}%`,
-                  backgroundColor: theme.progressGood,
-                },
-              ]}
-            />
+        {goals.length === 0 ? (
+          <View style={styles.empty}>
+            <Text style={[t.body, { color: p.textSecondary, textAlign: 'center', marginBottom: space.lg }]}>
+              Save towards something: a trip, an emergency fund, a new laptop.
+            </Text>
+            <Button label="Create a goal" onPress={() => setFormGoal('new')} />
           </View>
+        ) : (
+          <>
+            <View style={styles.summary}>
+              <Text style={[t.caption, { color: p.textSecondary }]}>Total saved</Text>
+              <Text style={[t.display, { color: p.text, marginVertical: space.xs }]}>
+                {currency(totalSaved, currencyCode)}
+              </Text>
+              <View style={{ marginTop: space.md }}>
+                <ProgressBar ratio={totalTarget ? totalSaved / totalTarget : 0} color={p.positive} height={6} />
+              </View>
+              <Text style={[t.caption, { color: p.textSecondary, marginTop: space.sm }]}>
+                of {currency(totalTarget, currencyCode)} across {goals.length} {goals.length === 1 ? 'goal' : 'goals'}
+              </Text>
+            </View>
 
-          <Text style={[styles.overallPercent, { color: theme.heroText }]}>
-            {overallProgress.toFixed(0)}% complete
-          </Text>
-        </View>
-
-        {/* Goals List */}
-        <View style={styles.listContainer}>
-          {sortedGoals.map((goal) => {
-            const progress = goal.target > 0 ? (goal.saved / goal.target) * 100 : 0;
-            const remaining = Math.max(0, goal.target - goal.saved);
-
-            return (
-              <Pressable
-                key={goal.id}
-                style={[styles.goalCard, { backgroundColor: theme.surface }]}
-                onPress={() => {
-                  setSelectedGoal(goal);
-                  setShowModal(true);
-                }}
-              >
-                <View style={styles.goalHeader}>
-                  <Text style={[styles.goalName, { color: theme.text }]}>{goal.name}</Text>
-                  <Text style={[styles.goalStatus, { color: theme.textMuted }]}>
-                    {progress >= 100 ? '✓ Complete' : `${progress.toFixed(0)}%`}
-                  </Text>
-                </View>
-
-                <View style={styles.goalProgressBar}>
-                  <View
-                    style={[
-                      styles.goalProgressFill,
-                      {
-                        width: `${Math.min(progress, 100)}%`,
-                        backgroundColor:
-                          progress >= 100 ? theme.progressGood : theme.progressWarning,
-                      },
-                    ]}
-                  />
-                </View>
-
-                <View style={styles.goalFooter}>
-                  <Text style={[styles.goalAmount, { color: theme.text }]}>
-                    {currency(goal.saved, preferences.currencyCode)}
-                  </Text>
-                  <Text style={[styles.goalRemaining, { color: theme.textMuted }]}>
-                    {remaining > 0
-                      ? `${currency(remaining, preferences.currencyCode)} remaining`
-                      : 'Target reached'}
-                  </Text>
-                </View>
-              </Pressable>
-            );
-          })}
-        </View>
-
-        <View style={{ height: 80 }} />
+            <View style={{ marginTop: space.lg }}>
+              {goals.map((goal) => (
+                <GoalRow key={goal.id} goal={goal} currencyCode={currencyCode} onPress={() => setSelectedId(goal.id)} />
+              ))}
+            </View>
+          </>
+        )}
       </ScrollView>
 
-      {/* Contribution Modal */}
-      <Modal visible={showModal} transparent animationType="slide">
-        <SafeAreaView style={[styles.modal, { backgroundColor: 'rgba(0,0,0,0.5)' }]}>
-          <View style={[styles.modalContent, { backgroundColor: theme.background }]}>
-            <View style={[styles.modalHeader, { borderBottomColor: theme.divider }]}>
-              <Text style={[styles.modalTitle, { color: theme.text }]}>
-                {selectedGoal?.name}
+      <Sheet visible={!!selected} onClose={close}>
+        {selected && (
+          <View style={styles.sheet}>
+            <View style={styles.titleRow}>
+              <Text style={[t.title, { color: p.text, flex: 1 }]} numberOfLines={1}>
+                {selected.name}
               </Text>
-              <Pressable onPress={() => setShowModal(false)}>
-                <Text style={[styles.modalClose, { color: theme.accent }]}>✕</Text>
+              <Pressable
+                onPress={() => {
+                  close();
+                  setFormGoal(selected);
+                }}
+                hitSlop={10}
+              >
+                <Text style={[t.caption, { color: p.accent, fontWeight: '600' }]}>Edit goal</Text>
               </Pressable>
             </View>
-
-            <View style={styles.modalBody}>
-              <Text style={[styles.modalLabel, { color: theme.textMuted }]}>
-                Current: {currency(selectedGoal?.saved ?? 0, preferences.currencyCode)}
-              </Text>
-
-              <View
-                style={[
-                  styles.modalInput,
-                  { backgroundColor: theme.surface, borderColor: theme.divider },
-                ]}
-              >
-                <TextInput
-                  style={[styles.input, { color: theme.text }]}
-                  placeholder="0"
-                  placeholderTextColor={theme.placeholder}
-                  keyboardType="decimal-pad"
-                  value={contributionAmount}
-                  onChangeText={setContributionAmount}
-                />
-                <Text style={[styles.currency, { color: theme.textMuted }]}>€</Text>
-              </View>
-
-              <View style={styles.modalButtons}>
-                <Pressable
-                  style={[styles.modalButton, { backgroundColor: theme.accent }]}
-                  onPress={handleAddContribution}
-                >
-                  <Text style={[styles.modalButtonText, { color: theme.accentText }]}>
-                    Add Contribution
-                  </Text>
-                </Pressable>
-
-                <Pressable
-                  style={[styles.modalButton, { backgroundColor: theme.surfaceMuted }]}
-                  onPress={handleWithdraw}
-                >
-                  <Text style={[styles.modalButtonText, { color: theme.text }]}>
-                    Withdraw
-                  </Text>
-                </Pressable>
-              </View>
+            <Text style={[t.caption, { color: p.textSecondary, marginTop: space.xs }]}>
+              {currency(selected.saved, currencyCode)} of {currency(selected.target, currencyCode)}
+            </Text>
+            <TextInput
+              value={amount}
+              onChangeText={(v) => setAmount(cleanAmountInput(v))}
+              placeholder="0"
+              placeholderTextColor={p.textTertiary}
+              keyboardType="decimal-pad"
+              autoFocus
+              style={[t.display, styles.input, { color: p.text, borderBottomColor: p.hairline }]}
+            />
+            <View style={{ gap: space.sm }}>
+              <Button label="Add to goal" onPress={() => apply(1)} disabled={parsed <= 0} />
+              <Button
+                label="Withdraw"
+                variant="secondary"
+                onPress={() => apply(-1)}
+                disabled={parsed <= 0 || parsed > selected.saved}
+              />
             </View>
           </View>
-        </SafeAreaView>
-      </Modal>
-    </SafeAreaView>
+        )}
+      </Sheet>
+
+      <GoalFormSheet
+        goal={formGoal}
+        index={goals.length}
+        onSave={saveGoal}
+        onDelete={deleteGoal}
+        onClose={() => setFormGoal(null)}
+      />
+    </Screen>
+  );
+}
+
+function GoalFormSheet({
+  goal,
+  index,
+  onSave,
+  onDelete,
+  onClose,
+}: {
+  goal: Goal | 'new' | null;
+  index: number;
+  onSave: (goal: Goal) => void;
+  onDelete: (id: string) => void;
+  onClose: () => void;
+}) {
+  const p = usePalette();
+  const [name, setName] = useState('');
+  const [target, setTarget] = useState('');
+  const [saved, setSaved] = useState('');
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  const isNew = goal === 'new';
+
+  useEffect(() => {
+    if (!goal) return;
+    setConfirmDelete(false);
+    setName(isNew ? '' : goal.name);
+    setTarget(isNew ? '' : String(goal.target));
+    setSaved(isNew ? '' : String(goal.saved));
+  }, [goal, isNew]);
+
+  const valid = name.trim().length > 0 && toAmount(target) > 0;
+
+  const submit = () => {
+    if (!valid || !goal) return;
+    onSave({
+      id: isNew ? createId('goal') : goal.id,
+      name: name.trim(),
+      target: toAmount(target),
+      saved: toAmount(saved),
+      themeId: isNew ? inferThemeId(name, index) : goal.themeId,
+    });
+  };
+
+  return (
+    <Sheet visible={!!goal} onClose={onClose}>
+      <View style={styles.sheet}>
+        <View style={styles.titleRow}>
+          <Text style={[t.title, { color: p.text }]}>{isNew ? 'New goal' : 'Edit goal'}</Text>
+          <Pressable onPress={onClose} hitSlop={12} accessibilityLabel="Close">
+            <Feather name="x" size={22} color={p.textSecondary} />
+          </Pressable>
+        </View>
+        <Text style={[t.overline, styles.label, { color: p.textSecondary }]}>Name</Text>
+        <TextInput
+          value={name}
+          onChangeText={setName}
+          placeholder="e.g. Summer trip"
+          placeholderTextColor={p.textTertiary}
+          autoFocus={isNew}
+          style={[t.body, styles.field, { color: p.text, backgroundColor: p.fill }]}
+        />
+        <View style={styles.pair}>
+          <View style={{ flex: 1 }}>
+            <Text style={[t.overline, styles.label, { color: p.textSecondary }]}>Target</Text>
+            <TextInput
+              value={target}
+              onChangeText={(v) => setTarget(cleanAmountInput(v))}
+              placeholder="0"
+              placeholderTextColor={p.textTertiary}
+              keyboardType="decimal-pad"
+              style={[t.amount, styles.field, { color: p.text, backgroundColor: p.fill }]}
+            />
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text style={[t.overline, styles.label, { color: p.textSecondary }]}>Saved so far</Text>
+            <TextInput
+              value={saved}
+              onChangeText={(v) => setSaved(cleanAmountInput(v))}
+              placeholder="0"
+              placeholderTextColor={p.textTertiary}
+              keyboardType="decimal-pad"
+              style={[t.amount, styles.field, { color: p.text, backgroundColor: p.fill }]}
+            />
+          </View>
+        </View>
+        <View style={{ marginTop: space.xl }}>
+          <Button label={isNew ? 'Create goal' : 'Save'} onPress={submit} disabled={!valid} />
+        </View>
+        {!isNew && goal && (
+          <Pressable
+            onPress={() => (confirmDelete ? onDelete(goal.id) : setConfirmDelete(true))}
+            style={styles.delete}
+          >
+            <Text style={[t.bodyStrong, { color: p.negative }]}>
+              {confirmDelete ? 'Tap again to delete' : 'Delete goal'}
+            </Text>
+          </Pressable>
+        )}
+      </View>
+    </Sheet>
+  );
+}
+
+function GoalRow({ goal, currencyCode, onPress }: { goal: Goal; currencyCode: string; onPress: () => void }) {
+  const p = usePalette();
+  const ratio = goal.target > 0 ? goal.saved / goal.target : 0;
+  const done = ratio >= 1;
+  return (
+    <Pressable onPress={onPress} style={({ pressed }) => [styles.row, pressed && { backgroundColor: p.fill }]}>
+      <View style={styles.rowLine}>
+        <Text style={[t.body, { color: p.text, flex: 1 }]} numberOfLines={1}>
+          {goal.name}
+        </Text>
+        <Text style={[t.amount, { color: p.text }]}>
+          {currency(goal.saved, currencyCode)}
+          <Text style={{ color: p.textTertiary }}> / {currency(goal.target, currencyCode)}</Text>
+        </Text>
+      </View>
+      <ProgressBar ratio={ratio} color={done ? p.positive : p.accent} />
+      <Text style={[t.caption, { color: done ? p.positive : p.textSecondary }]}>
+        {done ? 'Reached' : `${Math.round(ratio * 100)}% · ${currency(goal.target - goal.saved, currencyCode)} to go`}
+      </Text>
+    </Pressable>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingVertical: 14,
-    paddingHorizontal: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: 'rgba(0,0,0,0.06)',
-  },
-  backButton: {
-    fontSize: 15,
-    fontWeight: '700',
-  },
-  headerTitle: {
-    fontSize: 19,
-    fontWeight: '800',
-    letterSpacing: 0.3,
-  },
-  scrollContent: {
-    paddingVertical: 18,
-    paddingBottom: 100,
-  },
-  overallCard: {
-    marginHorizontal: 16,
-    marginBottom: 22,
-    paddingVertical: 24,
-    paddingHorizontal: 20,
-    borderRadius: 18,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.15,
-    shadowRadius: 12,
-    elevation: 10,
-  },
-  overallLabel: {
-    fontSize: 13,
-    fontWeight: '600',
-    marginBottom: 8,
-    letterSpacing: 0.2,
-  },
-  overallAmount: {
-    fontSize: 38,
-    fontWeight: '800',
-    marginBottom: 4,
-  },
-  overallTarget: {
-    fontSize: 13,
-    fontWeight: '600',
-    marginBottom: 14,
-  },
-  overallProgressBar: {
-    height: 12,
-    borderRadius: 6,
-    overflow: 'hidden',
-    marginBottom: 14,
-    backgroundColor: 'rgba(0,0,0,0.08)',
-  },
-  overallProgressFill: {
-    height: '100%',
-    borderRadius: 6,
-  },
-  overallPercent: {
-    fontSize: 15,
-    fontWeight: '700',
-  },
-  listContainer: {
-    paddingHorizontal: 16,
-    gap: 14,
-  },
-  goalCard: {
-    paddingVertical: 16,
-    paddingHorizontal: 16,
-    borderRadius: 14,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.08,
-    shadowRadius: 6,
-    elevation: 4,
-  },
-  goalHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 12,
-  },
-  goalName: {
-    fontSize: 16,
-    fontWeight: '700',
-    flex: 1,
-  },
-  goalStatus: {
-    fontSize: 13,
-    fontWeight: '700',
-  },
-  goalProgressBar: {
-    height: 10,
-    backgroundColor: 'rgba(0,0,0,0.08)',
-    borderRadius: 5,
-    overflow: 'hidden',
-    marginBottom: 12,
-  },
-  goalProgressFill: {
-    height: '100%',
-    borderRadius: 5,
-  },
-  goalFooter: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  goalAmount: {
-    fontSize: 15,
-    fontWeight: '700',
-  },
-  goalRemaining: {
-    fontSize: 12,
-    fontWeight: '600',
-  },
-  modal: {
-    flex: 1,
-    justifyContent: 'flex-end',
-  },
-  modalContent: {
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
-    maxHeight: '80%',
-  },
-  modalHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingVertical: 16,
-    paddingHorizontal: 18,
-    borderBottomWidth: 1,
-  },
-  modalTitle: {
-    fontSize: 18,
-    fontWeight: '800',
-  },
-  modalClose: {
-    fontSize: 20,
-    fontWeight: '600',
-  },
-  modalBody: {
-    paddingVertical: 24,
-    paddingHorizontal: 18,
-  },
-  modalLabel: {
-    fontSize: 12,
-    fontWeight: '600',
-    marginBottom: 10,
-    letterSpacing: 0.2,
-  },
-  modalInput: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    borderRadius: 14,
-    paddingHorizontal: 16,
-    marginBottom: 24,
-    borderWidth: 1,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.08,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  input: {
-    flex: 1,
-    fontSize: 32,
-    fontWeight: '800',
-    paddingVertical: 14,
-  },
-  currency: {
-    fontSize: 20,
-    fontWeight: '700',
-    marginLeft: 6,
-  },
-  modalButtons: {
-    gap: 12,
-  },
-  modalButton: {
-    paddingVertical: 16,
-    borderRadius: 14,
-    alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  modalButtonText: {
-    fontSize: 16,
-    fontWeight: '700',
-  },
+  summary: { paddingHorizontal: space.xl, paddingTop: space.sm },
+  empty: { paddingHorizontal: space.xl, paddingTop: space.xxl },
+  row: { paddingHorizontal: space.xl, paddingVertical: space.md, gap: space.sm },
+  rowLine: { flexDirection: 'row', alignItems: 'baseline', gap: space.md },
+  sheet: { paddingHorizontal: space.xl, paddingTop: space.sm, paddingBottom: space.sm },
+  titleRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: space.md },
+  label: { marginTop: space.lg, marginBottom: space.sm },
+  field: { borderRadius: 10, paddingHorizontal: space.md, paddingVertical: space.md },
+  pair: { flexDirection: 'row', gap: space.md },
+  input: { borderBottomWidth: StyleSheet.hairlineWidth, paddingVertical: space.md, marginVertical: space.xl },
+  delete: { alignItems: 'center', paddingVertical: space.md },
 });

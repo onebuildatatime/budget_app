@@ -2,353 +2,289 @@ import React, { useState } from 'react';
 import {
   View,
   Text,
-  StyleSheet,
   ScrollView,
   TextInput,
   Pressable,
-  SafeAreaView,
-  useWindowDimensions,
-  Alert,
+  StyleSheet,
   KeyboardAvoidingView,
   Platform,
 } from 'react-native';
+import { Feather } from '@expo/vector-icons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useBudgetStore } from '../store/useBudgetStore';
-import { useTheme } from '../hooks/useTheme';
-import { FloatingNav } from '../components/FloatingNav';
-import { MenuNav } from '../components/MenuNav';
-
 import {
-  getTotalPlanned,
-  getTotalSpent,
+  categoryBucketOrder,
+  createId,
   currency,
-  getMonthLabel,
-  ensureCurrentMonth,
+  inferThemeId,
+  type CategoryBucket,
 } from '../../budgetModel';
-import type { Category, MonthRecord } from '../../budgetModel';
+import { bucketTargets, buildTemplateCategories } from '../budgetTemplate';
+import { triggerHaptic } from '../utils/haptics';
+import { usePalette, type as t, space } from '../ui/theme';
+import { Screen, Header, SectionLabel, Divider, Button } from '../ui/primitives';
+import { Sheet } from '../ui/Sheet';
+import {
+  CategorySheet,
+  cleanAmountInput,
+  fromDraft,
+  toAmount,
+  toDraft,
+  type DraftCategory,
+} from './CategorySheet';
+import { TemplateSheet } from './TemplateSheet';
 
-export function BudgetEditorScreen({
-  currentScreen,
-  route,
-  onNavigate,
-}: {
-  currentScreen: string;
-  route: { params?: { monthId?: string } };
-  onNavigate: (screen: string) => void;
-}) {
-  const theme = useTheme();
-  const { months, preferences, updateState } = useBudgetStore();
-  const monthId = route.params?.monthId;
-  const activeMonth = months.find((m) => m.id === monthId);
+const bucketLabel: Record<CategoryBucket, string> = { needs: 'Needs', wants: 'Wants', savings: 'Savings' };
 
-  const [editedCategories, setEditedCategories] = useState<Map<string, number>>(
-    new Map(activeMonth?.categories.map((c) => [c.id, c.planned]) ?? [])
-  );
+const snapshot = (income: number, cats: DraftCategory[]) => JSON.stringify({ income, cats: cats.map(fromDraft) });
 
-  if (!activeMonth) return null;
+export function BudgetEditorScreen({ monthId, onBack }: { monthId: string; onBack: () => void }) {
+  const p = usePalette();
+  const insets = useSafeAreaInsets();
+  const months = useBudgetStore((s) => s.months);
+  const currencyCode = useBudgetStore((s) => s.preferences.currencyCode);
+  const updateState = useBudgetStore((s) => s.updateState);
+  const month = months.find((m) => m.id === monthId);
 
-  const totalPlanned = Array.from(editedCategories.values()).reduce((a, b) => a + b, 0);
-  const limit = parseFloat(activeMonth.monthlyLimit);
-  const difference = limit - totalPlanned;
-  const isBalanced = Math.abs(difference) < 0.01;
+  const [income, setIncome] = useState(() => month?.monthlyLimit ?? '');
+  const [cats, setCats] = useState<DraftCategory[]>(() => month?.categories.map(toDraft) ?? []);
+  const [original] = useState(() => snapshot(toAmount(month?.monthlyLimit ?? ''), month?.categories.map(toDraft) ?? []));
+  const [editing, setEditing] = useState<DraftCategory | null>(null);
+  const [templateOpen, setTemplateOpen] = useState(false);
+  const [discardOpen, setDiscardOpen] = useState(false);
 
-  const handleCategoryChange = (categoryId: string, value: string) => {
-    const num = parseFloat(value) || 0;
-    setEditedCategories((map) => new Map(map).set(categoryId, Math.max(0, num)));
+  if (!month) return null;
+
+  const incomeValue = toAmount(income);
+  const assigned = cats.reduce((sum, c) => sum + toAmount(c.planned), 0);
+  const diff = Math.round((incomeValue - assigned) * 100) / 100;
+  const dirty = snapshot(incomeValue, cats) !== original;
+
+  const back = () => (dirty ? setDiscardOpen(true) : onBack());
+
+  const save = () => {
+    updateState({
+      months: months.map((m) =>
+        m.id === month.id
+          ? { ...m, monthlyLimit: String(incomeValue), categories: cats.map(fromDraft), updatedAt: Date.now() }
+          : m,
+      ),
+    });
+    triggerHaptic('success');
+    onBack();
   };
 
-  const handleSave = () => {
-    if (!isBalanced) {
-      Alert.alert(
-        'Unbalanced Budget',
-        `Your allocations differ from your income by ${currency(Math.abs(difference), preferences.currencyCode)}. Adjust categories to 100% allocation.`,
-        [{ text: 'OK' }]
-      );
-      return;
-    }
-
-    const updatedMonth: MonthRecord = {
-      ...activeMonth,
-      categories: activeMonth.categories.map((cat) => ({
-        ...cat,
-        planned: editedCategories.get(cat.id) ?? cat.planned,
-      })),
-      updatedAt: Date.now(),
-    };
-
-    const nextState = ensureCurrentMonth(
-      {
-        ...useBudgetStore.getState(),
-        months: months.map((m) => (m.id === activeMonth.id ? updatedMonth : m)),
-      },
-      new Date()
-    );
-
-    updateState({
-      months: nextState.months,
-      activeMonthId: nextState.activeMonthId,
+  const newCategory = (bucket: CategoryBucket) =>
+    setEditing({
+      id: createId('cat'),
+      name: '',
+      bucket,
+      planned: '',
+      subs: [],
+      themeId: inferThemeId('', cats.length),
+      recurring: false,
+      isNew: true,
     });
 
-    Alert.alert('Saved', 'Your budget has been updated.', [
-      { text: 'OK', onPress: () => onNavigate('Dashboard') },
-    ]);
+  const saveCategory = (draft: DraftCategory) => {
+    const { isNew, ...rest } = draft;
+    const cleaned = toDraft(fromDraft(rest));
+    setCats((current) => (isNew ? [...current, cleaned] : current.map((c) => (c.id === draft.id ? cleaned : c))));
+    setEditing(null);
+  };
+
+  const applyTemplate = (value: number) => {
+    setIncome(String(value));
+    setCats(buildTemplateCategories(value).map(toDraft));
+    setTemplateOpen(false);
+    triggerHaptic('success');
   };
 
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]}>
-      <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        style={{ flex: 1 }}
-      >
-        <View style={styles.header}>
-          <Pressable onPress={() => onNavigate('Dashboard')}>
-            <Text style={[styles.backButton, { color: theme.accent }]}>← Back</Text>
+    <Screen>
+      <Header
+        title="Budget"
+        onBack={back}
+        right={
+          <Pressable onPress={() => setTemplateOpen(true)} hitSlop={10}>
+            <Text style={[t.caption, { color: p.accent, fontWeight: '600' }]}>50/30/20</Text>
           </Pressable>
-          <Text style={[styles.headerTitle, { color: theme.text }]}>
-            {getMonthLabel(activeMonth.id, 'en-US')}
-          </Text>
-          <View style={{ width: 40 }} />
-        </View>
-
-        <ScrollView contentContainerStyle={styles.scrollContent}>
-          {/* Summary */}
-          <View style={[styles.summary, { backgroundColor: theme.hero }]}>
-            <View style={styles.summaryRow}>
-              <Text style={[styles.summaryLabel, { color: theme.heroMuted }]}>Income</Text>
-              <Text style={[styles.summaryValue, { color: theme.heroText }]}>
-                {currency(limit, preferences.currencyCode)}
-              </Text>
-            </View>
-            <View
-              style={[
-                styles.summaryRow,
-                {
-                  borderTopWidth: 1,
-                  borderTopColor: theme.heroShadow,
-                  paddingTop: 8,
-                },
-              ]}
-            >
-              <Text style={[styles.summaryLabel, { color: theme.heroMuted }]}>Allocated</Text>
-              <Text style={[styles.summaryValue, { color: theme.heroText }]}>
-                {currency(totalPlanned, preferences.currencyCode)}
-              </Text>
-            </View>
-            <View style={styles.summaryRow}>
-              <Text style={[styles.summaryLabel, { color: theme.heroMuted }]}>
-                {difference > 0 ? 'Remaining' : 'Over'}
-              </Text>
-              <Text
-                style={[
-                  styles.summaryValue,
-                  {
-                    color: isBalanced ? theme.heroStatusGoodText : theme.heroStatusAlertText,
-                  },
-                ]}
-              >
-                {currency(Math.abs(difference), preferences.currencyCode)}
-              </Text>
-            </View>
+        }
+      />
+      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+        <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={{ paddingBottom: space.xl }}>
+          <View style={styles.incomeRow}>
+            <Text style={[t.body, { color: p.text, flex: 1 }]}>Monthly income</Text>
+            <TextInput
+              value={income}
+              onChangeText={(v) => setIncome(cleanAmountInput(v))}
+              keyboardType="decimal-pad"
+              selectTextOnFocus
+              style={[t.amount, styles.input, { color: p.text, backgroundColor: p.fill }]}
+            />
           </View>
 
-          {/* Categories */}
-          {activeMonth.categories.map((category) => (
-            <View key={category.id} style={styles.categoryGroup}>
-              <Text style={[styles.categoryGroupTitle, { color: theme.text }]}>
-                {category.name}
-              </Text>
-
-              <View style={[styles.categoryInput, { backgroundColor: theme.surface }]}>
-                <Text style={[styles.inputLabel, { color: theme.textMuted }]}>Budget</Text>
-                <View style={styles.inputRow}>
-                  <TextInput
-                    style={[styles.input, { color: theme.text }]}
-                    placeholder="0"
-                    placeholderTextColor={theme.placeholder}
-                    keyboardType="decimal-pad"
-                    value={String(editedCategories.get(category.id) ?? category.planned)}
-                    onChangeText={(value) => handleCategoryChange(category.id, value)}
-                  />
-                  <Text style={[styles.currency, { color: theme.textMuted }]}>€</Text>
-                </View>
-              </View>
-
-              {category.subcategories.length > 0 && (
-                <View style={[styles.subcategoryList, { backgroundColor: theme.surfaceSoft }]}>
-                  {category.subcategories.map((subcategory, idx) => (
-                    <Text
-                      key={idx}
-                      style={[
-                        styles.subcategory,
-                        { color: theme.textMuted },
-                        idx < category.subcategories.length - 1 && {
-                          borderBottomWidth: 1,
-                          borderBottomColor: theme.divider,
-                        },
-                      ]}
-                    >
-                      • {subcategory}
-                    </Text>
-                  ))}
-                </View>
-              )}
-            </View>
-          ))}
-
-          <View style={{ height: 100 }} />
-        </ScrollView>
-
-        <View style={[styles.footer, { backgroundColor: theme.surface, borderTopColor: theme.divider }]}>
-          <Pressable
-            style={[
-              styles.saveButton,
-              {
-                backgroundColor: isBalanced ? theme.accent : theme.surfaceMuted,
-              },
-            ]}
-            onPress={handleSave}
-            disabled={!isBalanced}
-          >
+          <View style={styles.summary}>
+            <Text style={[t.caption, { color: p.textSecondary }]}>
+              {diff === 0 ? 'Fully assigned' : diff > 0 ? 'Left to assign' : 'Over-assigned by'}
+            </Text>
             <Text
               style={[
-                styles.saveButtonText,
-                {
-                  color: isBalanced ? theme.accentText : theme.textMuted,
-                },
+                t.display,
+                { color: diff === 0 ? p.positive : diff > 0 ? p.text : p.negative, marginTop: space.xs },
               ]}
             >
-              {isBalanced ? 'Save Budget' : 'Balance to 100%'}
+              {currency(Math.abs(diff), currencyCode)}
             </Text>
-          </Pressable>
+            <Text style={[t.caption, { color: p.textSecondary, marginTop: space.sm }]}>
+              {currency(assigned, currencyCode)} of {currency(incomeValue, currencyCode)} assigned
+            </Text>
+          </View>
+
+          {categoryBucketOrder.map((bucket) => {
+            const inBucket = cats.filter((c) => c.bucket === bucket);
+            const total = inBucket.reduce((sum, c) => sum + toAmount(c.planned), 0);
+            const share = incomeValue > 0 ? Math.round((total / incomeValue) * 100) : 0;
+            const target = bucketTargets[bucket] * 100;
+            const offTarget = bucket === 'savings' ? share < target : share > target;
+            return (
+              <View key={bucket}>
+                <SectionLabel
+                  right={
+                    <Text style={[t.caption, { color: p.textSecondary }]}>
+                      {currency(total, currencyCode)} ·{' '}
+                      <Text style={{ color: offTarget ? p.warning : p.textSecondary }}>{share}%</Text>
+                      <Text style={{ color: p.textTertiary }}> of {target}%</Text>
+                    </Text>
+                  }
+                >
+                  {bucketLabel[bucket]}
+                </SectionLabel>
+                {inBucket.map((c) => (
+                  <View key={c.id}>
+                    <View style={styles.row}>
+                      <Pressable onPress={() => setEditing(c)} style={styles.rowMain}>
+                        <Text style={[t.body, { color: p.text }]} numberOfLines={1}>
+                          {c.name}
+                        </Text>
+                        <Text style={[t.caption, { color: p.textTertiary, marginTop: 2 }]} numberOfLines={1}>
+                          {c.subs.length ? c.subs.map((s) => s.name).join(', ') : 'No subcategories'}
+                        </Text>
+                      </Pressable>
+                      <TextInput
+                        value={c.planned}
+                        onChangeText={(v) =>
+                          setCats((current) =>
+                            current.map((x) => (x.id === c.id ? { ...x, planned: cleanAmountInput(v) } : x)),
+                          )
+                        }
+                        placeholder="0"
+                        placeholderTextColor={p.textTertiary}
+                        keyboardType="decimal-pad"
+                        selectTextOnFocus
+                        style={[t.amount, styles.input, { color: p.text, backgroundColor: p.fill }]}
+                      />
+                      <Pressable onPress={() => setEditing(c)} hitSlop={8} accessibilityLabel={`Edit ${c.name}`}>
+                        <Feather name="chevron-right" size={18} color={p.textTertiary} />
+                      </Pressable>
+                    </View>
+                    <Divider inset={space.xl} />
+                  </View>
+                ))}
+                <Pressable onPress={() => newCategory(bucket)} style={styles.addRow}>
+                  <Feather name="plus" size={18} color={p.accent} />
+                  <Text style={[t.body, { color: p.accent }]}>Add category</Text>
+                </Pressable>
+              </View>
+            );
+          })}
+        </ScrollView>
+
+        <View style={[styles.footer, { borderTopColor: p.hairline, paddingBottom: Math.max(insets.bottom, space.lg) }]}>
+          <Button label={dirty ? 'Save' : 'No changes'} onPress={save} disabled={!dirty || incomeValue <= 0} />
         </View>
       </KeyboardAvoidingView>
-    </SafeAreaView>
+
+      <CategorySheet
+        category={editing}
+        currencyCode={currencyCode}
+        onSave={saveCategory}
+        onDelete={(id) => {
+          setCats((current) => current.filter((c) => c.id !== id));
+          setEditing(null);
+        }}
+        onClose={() => setEditing(null)}
+      />
+
+      <TemplateSheet
+        visible={templateOpen}
+        initialIncome={income}
+        currencyCode={currencyCode}
+        existingCount={cats.length}
+        onApply={applyTemplate}
+        onClose={() => setTemplateOpen(false)}
+      />
+
+      <Sheet visible={discardOpen} onClose={() => setDiscardOpen(false)}>
+        <View style={styles.discard}>
+          <Text style={[t.title, { color: p.text }]}>Discard changes?</Text>
+          <Text style={[t.caption, { color: p.textSecondary, marginTop: space.xs, marginBottom: space.xl }]}>
+            Your budget edits haven't been saved.
+          </Text>
+          <View style={{ gap: space.sm }}>
+            <Button label="Keep editing" onPress={() => setDiscardOpen(false)} />
+            <Button
+              label="Discard"
+              variant="secondary"
+              onPress={() => {
+                setDiscardOpen(false);
+                onBack();
+              }}
+            />
+          </View>
+        </View>
+      </Sheet>
+    </Screen>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
-  header: {
+  incomeRow: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
-    paddingVertical: 14,
-    paddingHorizontal: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: 'rgba(0,0,0,0.06)',
-  },
-  backButton: {
-    fontSize: 15,
-    fontWeight: '700',
-  },
-  headerTitle: {
-    fontSize: 19,
-    fontWeight: '800',
-    letterSpacing: 0.3,
-  },
-  scrollContent: {
-    paddingVertical: 18,
-    paddingBottom: 100,
+    paddingHorizontal: space.xl,
+    paddingVertical: space.sm,
   },
   summary: {
-    marginHorizontal: 16,
-    marginVertical: 14,
-    paddingVertical: 20,
-    paddingHorizontal: 18,
-    borderRadius: 18,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.15,
-    shadowRadius: 12,
-    elevation: 10,
+    paddingHorizontal: space.xl,
+    paddingTop: space.lg,
   },
-  summaryRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingVertical: 10,
-  },
-  summaryLabel: {
-    fontSize: 13,
-    fontWeight: '600',
-    letterSpacing: 0.2,
-  },
-  summaryValue: {
-    fontSize: 18,
-    fontWeight: '800',
-  },
-  categoryGroup: {
-    marginHorizontal: 16,
-    marginVertical: 12,
-  },
-  categoryGroupTitle: {
-    fontSize: 16,
-    fontWeight: '700',
-    marginBottom: 10,
-    letterSpacing: 0.3,
-  },
-  categoryInput: {
-    borderRadius: 14,
-    paddingVertical: 14,
-    paddingHorizontal: 16,
-    marginBottom: 10,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.08,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  inputLabel: {
-    fontSize: 11,
-    fontWeight: '600',
-    marginBottom: 6,
-    letterSpacing: 0.2,
-  },
-  inputRow: {
+  row: {
     flexDirection: 'row',
     alignItems: 'center',
+    gap: space.md,
+    paddingHorizontal: space.xl,
+    paddingVertical: space.md,
   },
+  rowMain: { flex: 1 },
   input: {
-    flex: 1,
-    fontSize: 17,
-    fontWeight: '700',
-    paddingVertical: 6,
+    width: 112,
+    textAlign: 'right',
+    paddingHorizontal: space.md,
+    paddingVertical: space.sm,
+    borderRadius: 8,
   },
-  currency: {
-    fontSize: 15,
-    fontWeight: '700',
-    marginLeft: 6,
-  },
-  subcategoryList: {
-    borderRadius: 12,
-    paddingVertical: 10,
-    paddingHorizontal: 14,
-    marginBottom: 14,
-  },
-  subcategory: {
-    fontSize: 13,
-    fontWeight: '500',
-    paddingVertical: 8,
+  addRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: space.sm,
+    paddingHorizontal: space.xl,
+    paddingVertical: space.md,
   },
   footer: {
-    paddingHorizontal: 16,
-    paddingVertical: 14,
-    borderTopWidth: 1,
+    paddingHorizontal: space.xl,
+    paddingTop: space.md,
+    borderTopWidth: StyleSheet.hairlineWidth,
   },
-  saveButton: {
-    paddingVertical: 16,
-    borderRadius: 14,
-    alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  saveButtonText: {
-    fontSize: 16,
-    fontWeight: '700',
-    letterSpacing: 0.3,
-  },
+  discard: { paddingHorizontal: space.xl, paddingTop: space.sm, paddingBottom: space.md },
 });
